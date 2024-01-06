@@ -1,0 +1,6 @@
+(executable
+ (public_name scopeland)
+ (name scopeland)
+ (modules scopeland)
+ (libraries scopelandlib str) 
+)

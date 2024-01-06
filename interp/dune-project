@@ -1,0 +1,24 @@
+(lang dune 3.7)
+
+(name scopeland)
+
+(generate_opam_files true)
+
+
+(authors "Emil Jäpelt")
+
+(maintainers "Emil Jäpelt")
+
+(license LICENSE)
+
+(using menhir 2.1)
+
+(package
+ (name scopeland)
+ (synopsis "A compiler for the Seplin langauges.")
+ (description "A compiler for languages targeting the Seplin virtual machine.")
+ (depends ocaml dune)
+ (tags
+  (compiler)))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project

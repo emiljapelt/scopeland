@@ -1,0 +1,11 @@
+(ocamllex lexer)
+(menhir (modules parser))
+(library
+ (name scopelandlib)
+ (modules
+   exceptions
+   absyn
+   lexer
+   parser
+ )
+)
