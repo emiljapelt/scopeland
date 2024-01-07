@@ -14,11 +14,11 @@
 %token ARROW
 
 /*Low precedence*/
+%right ARROW
 %left EQ NEQ
 %left GT LT GTEQ LTEQ
 %left PLUS MINUS
 %left TIMES 
-%left ARROW
 %nonassoc NOT
 /*High precedence*/
 
@@ -42,8 +42,8 @@ expression:
   | expression TIMES expression { Binop("*", $1, $3) }
   | expression LT expression { Binop("<", $1, $3) }
   | LBRAKE scope RBRAKE { Scope (List.rev $2, NullScope) }
-  | NAME ARROW expression { Func($1, $3) }
-  | route expression { Call($1, $2) }
+  | NAME ARROW expression { Func($1, $3, NullScope) }
+  | expression expression { Call($1, $2) }
   | IF expression THEN expression ELSE expression { If($2, $4, $6) }
   | LPAR expression RPAR { $2 }
 ;

@@ -4,9 +4,9 @@ type expression =
     | Route of route
     | Binop of string * expression * expression
     | Scope of stmt list * scope
-    | Func of string * expression 
+    | Func of string * expression * scope
     | If of expression * expression * expression
-    | Call of route * expression
+    | Call of expression * expression
 
 and route = 
     | Label of string
