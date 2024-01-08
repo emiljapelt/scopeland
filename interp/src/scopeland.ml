@@ -80,8 +80,8 @@ let add_to_local_scope adds scope = match scope with
   | OuterScope vals -> OuterScope(adds @ vals)
   | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
 
-let rec route_lookup route scope =
-  let scope_vals = get_values_of_scope scope in
+let rec route_lookup route scope lscope =
+  let scope_vals = get_values_of_scope lscope in
   match route with
   | Label(ln) -> (
     List.find_map (fun v -> match v with
@@ -89,20 +89,20 @@ let rec route_lookup route scope =
     | _ -> None
     ) scope_vals
   )
-  | Index(e) -> ( 
+  | Index(e) -> ( Printf.printf "%s\n" (expression_string e);
     match interpret_expression None e scope with
     | (Value(i,_),_) -> (
       match List.nth_opt (List.rev scope_vals) i with
       | Some(_,v) -> Some(v)
       | None -> None
     )
-    | _ -> raise_failure "Indexing with non-constant value"
+    | (v,_) -> raise_failure ("Indexing with non-constant value: " ^ value_string v)
   )
   | InTo(ln,rt) -> ( 
     List.find_map (fun v -> match v with
       | (_,ScopeVal(scp,Some n)) -> ( match scp with 
         | NullScope -> raise_failure "Null scope entered" 
-        | _ -> if n = ln then route_lookup rt scp else None
+        | _ -> if n = ln then route_lookup rt scope scp else None
       )
       | _ -> None
     ) scope_vals
@@ -110,13 +110,13 @@ let rec route_lookup route scope =
   | OutOf rt -> ( match scope with 
     | NullScope -> raise_failure "Null scope3"
     | OuterScope _ -> raise_failure "Cannot escape the outermost scope"
-    | InnerScope (_,scp) -> route_lookup rt scp
+    | InnerScope (_,scp) -> route_lookup rt scope scp
   )
 
 and interpret_expression stmt_name_opt expr scope : (value * scope) = 
   match expr with
   | Constant i -> (Value(i,stmt_name_opt), scope)
-  | Route(rt) -> ( match route_lookup rt scope with
+  | Route(rt) -> ( match route_lookup rt scope scope with
     | Some(v) -> (v, scope)
     | None -> raise_failure ("Unknown label: " ^ route_string rt)
   )
