@@ -118,13 +118,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | Value(x,_),Value(y,_),"<" -> if x < y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
-  | Scope exprs -> ( 
-    let scope = match scope with 
-    | NullScope -> InnerScope([], scope)
-    | InnerScope _ -> InnerScope([], scope)
-    in
-    interpret_scope exprs scope
-  ) 
+  | Scope exprs -> interpret_scope exprs (InnerScope([], scope)) 
   | Func(arg,body) -> (Closure(arg, body, scope, stmt_name_opt), scope)
   | Call(func,arg) -> ( 
     match interpret_expression stmt_name_opt func scope with
