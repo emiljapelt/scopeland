@@ -184,9 +184,11 @@ and interpret_statement stmt scope : (value * scope) = match stmt with
 and interpret file = match file with File(stmt) -> interpret_statement stmt NullScope
 
 let () =
-  let input = resolve_input () in
-  let absyn = Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input)) in
   try 
+    let input = resolve_input () in
+    let absyn = Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input)) in
     let result = interpret absyn |> fst in
     Printf.printf "%s\n" (value_string result)
-  with | Failure(_,_,exp) -> Printf.printf "Failure: %s\n" exp
+  with 
+  | Failure(_,_,exp) -> Printf.printf "Failure: %s\n" exp
+  | _ -> Printf.printf "Unknown error"
