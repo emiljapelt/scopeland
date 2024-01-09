@@ -58,11 +58,11 @@ and expression_string expr = match expr with
   | Call(func, expr) -> expression_string func ^ " " ^ expression_string expr
 
 let get_values_of_scope scope = match scope with
-  | NullScope -> raise_failure "Null scope1"
+  | NullScope -> raise_failure "Value lookup in the Null scope"
   | InnerScope(vals,_) -> vals
 
 let add_to_local_scope adds scope = match scope with
-  | NullScope -> raise_failure "Null scope2"
+  | NullScope -> raise_failure "Scope lookup in the Null scope"
   | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
 
 let rec route_lookup route scope lscope =
@@ -94,10 +94,10 @@ let rec route_lookup route scope lscope =
     | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
     | _ -> None 
   )
-  | OutOf::[] -> raise_failure "OutOf must not be last in route"
+  | OutOf::[] -> raise_failure "OutOf: Cannot be last in route"
   | OutOf::t -> ( match lscope with 
     | InnerScope (_,NullScope)
-    | NullScope -> raise_failure "Null scope3"
+    | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
     | InnerScope (_,scp) -> route_lookup t scope scp
   )
 
@@ -116,7 +116,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | Value(x,_),Value(y,_),"-" -> (Value(x - y, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"*" -> (Value(x * y, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"<" -> if x < y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
-    | _ -> raise_failure "Unknown binop"
+    | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
   | Scope exprs -> ( 
     let scope = match scope with 
