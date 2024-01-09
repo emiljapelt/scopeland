@@ -20,12 +20,19 @@ let read_file path =
   let () = close_in_noerr file in
   content
 
-let rec route_string label =
-  match label with
-  | Label(ln) -> ln
-  | Index(_) -> "[_]"
-  | InTo(ln,rt) -> ln ^ "." ^ (route_string rt)
-  | OutOf rt -> "^."^ (route_string rt)
+let rec route_string route =
+  match route with
+  | [] -> ""
+  | h::[] -> (match h with 
+    | Label(ln) -> ln
+    | Index(_) -> "[_]"
+    | OutOf -> "^"
+  )
+  | h::t -> (match h with
+    | Label(ln) -> ln ^ "." ^ route_string t
+    | Index(_) -> "[_]" ^ "." ^ route_string t
+    | OutOf -> "^" ^ "." ^ route_string t
+  )
 
 let rec value_string value = match value with
   | Value(i,Some n) -> n ^ ": " ^ string_of_int i
@@ -33,10 +40,6 @@ let rec value_string value = match value with
   | Closure(arg_n,body,_,Some n) -> n ^ ": " ^ arg_n ^ " -> " ^ expression_string body
   | Closure(arg_n,body,_,None) -> arg_n ^ " -> " ^ expression_string body
   | ScopeVal(NullScope,_) -> "null scope"
-  | ScopeVal(OuterScope vals,_) -> (
-    let content = List.map (fun (n,_) -> match n with | Some n -> n | None -> "?") vals in
-    "[" ^ (String.concat ", " content) ^ "]"
-  )
   | ScopeVal(InnerScope(vals,_),_) -> (
     let content = List.map (fun (n,_) -> match n with | Some n -> n | None -> "?") vals in
     "[" ^ (String.concat ", " content) ^ "]"
@@ -54,63 +57,48 @@ and expression_string expr = match expr with
   | If(cond,expr1,expr2) -> "if " ^ expression_string cond ^ " then " ^ expression_string expr1 ^ " else " ^ expression_string expr2
   | Call(func, expr) -> expression_string func ^ " " ^ expression_string expr
 
-(*let print_scope scope =
-  let rec aux stmts lvl = match stmts with
-    | [] -> ()
-    | Named(n,Scope(stmts,_))::t -> Printf.printf "%s%s\n" (String.init lvl (fun _ -> '\t')) n ; aux stmts (lvl+1) ; aux t lvl
-    | Named(n,_)::t -> Printf.printf "%s%s\n" (String.init lvl (fun _ -> '\t')) n ; aux t lvl
-    | Anon(Scope(stmts,_))::t -> Printf.printf "%s?\n" (String.init lvl (fun _ -> '\t')) ; aux stmts (lvl+1) ; aux t lvl
-    | Anon(_)::t -> Printf.printf "%s?\n" (String.init lvl (fun _ -> '\t')) ; aux t lvl
-  in
-  let rec print scp lvl = 
-    match scp with
-    | NullScope -> Printf.printf "%s?\n" (String.init lvl (fun _ -> '\t')) ; Printf.printf "_\n"
-    | OuterScope stmts -> Printf.printf "%s?\n" (String.init lvl (fun _ -> '\t')) ; Printf.printf "outer\n" ; aux stmts (lvl+1)
-    | InnerScope (stmts, scp) -> Printf.printf "%s?\n" (String.init lvl (fun _ -> '\t')) ; Printf.printf "inner\n" ; aux stmts (lvl+1) ; print scp (lvl+1)
-  in
-  print scope 0*)
-
 let get_values_of_scope scope = match scope with
   | NullScope -> raise_failure "Null scope1"
-  | OuterScope vals 
   | InnerScope(vals,_) -> vals
 
 let add_to_local_scope adds scope = match scope with
   | NullScope -> raise_failure "Null scope2"
-  | OuterScope vals -> OuterScope(adds @ vals)
   | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
 
 let rec route_lookup route scope lscope =
   let scope_vals = get_values_of_scope lscope in
   match route with
-  | Label(ln) -> (
-    List.find_map (fun v -> match v with
-    | (Some n,v) -> if n = ln then Some(v) else None
-    | _ -> None
+  | [] -> raise_failure "Empty route"
+  | Label(ln)::t -> (
+    let lookup = List.find_map (fun v -> match v with
+      | (Some n,v) -> if n = ln then Some(v) else None
+      | _ -> None
     ) scope_vals
+    in 
+    if t = [] then lookup
+    else match lookup with
+    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
+    | _ -> None 
   )
-  | Index(e) -> ( Printf.printf "%s\n" (expression_string e);
-    match interpret_expression None e scope with
+  | Index(e)::t -> (
+    let lookup = match interpret_expression None e scope with
     | (Value(i,_),_) -> (
       match List.nth_opt (List.rev scope_vals) i with
       | Some(_,v) -> Some(v)
       | None -> None
     )
     | (v,_) -> raise_failure ("Indexing with non-constant value: " ^ value_string v)
+    in
+    if t = [] then lookup
+    else match lookup with
+    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
+    | _ -> None 
   )
-  | InTo(ln,rt) -> ( 
-    List.find_map (fun v -> match v with
-      | (_,ScopeVal(scp,Some n)) -> ( match scp with 
-        | NullScope -> raise_failure "Null scope entered" 
-        | _ -> if n = ln then route_lookup rt scope scp else None
-      )
-      | _ -> None
-    ) scope_vals
-  )
-  | OutOf rt -> ( match scope with 
+  | OutOf::[] -> raise_failure "OutOf must not be last in route"
+  | OutOf::t -> ( match lscope with 
+    | InnerScope (_,NullScope)
     | NullScope -> raise_failure "Null scope3"
-    | OuterScope _ -> raise_failure "Cannot escape the outermost scope"
-    | InnerScope (_,scp) -> route_lookup rt scope scp
+    | InnerScope (_,scp) -> route_lookup t scope scp
   )
 
 and interpret_expression stmt_name_opt expr scope : (value * scope) = 
@@ -133,7 +121,6 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   | Scope exprs -> ( 
     let scope = match scope with 
     | NullScope -> InnerScope([], scope)
-    | OuterScope _ 
     | InnerScope _ -> InnerScope([], scope)
     in
     interpret_scope exprs scope

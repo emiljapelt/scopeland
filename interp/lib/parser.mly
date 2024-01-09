@@ -49,10 +49,14 @@ expression:
 ;
 
 route:
-  NAME DOT route { InTo($1,$3) }
-  | NAME { Label $1 }
+  | step { [$1] }
+  | step DOT route { $1 :: $3 }
+;
+
+step: 
+  NAME { Label $1 }
   | LBRAKE expression RBRAKE { Index $2 }
-  | UP DOT route { OutOf $3 }
+  | UP { OutOf }
 ;
 
 scope:

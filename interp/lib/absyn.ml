@@ -8,11 +8,12 @@ type expression =
     | If of expression * expression * expression
     | Call of expression * expression
 
-and route = 
+and route = step list
+
+and step = 
     | Label of string
     | Index of expression
-    | InTo of string * route
-    | OutOf of route
+    | OutOf 
 
 and stmt =
     | Named of string * expression
@@ -20,7 +21,6 @@ and stmt =
 
 and scope = 
     | NullScope
-    | OuterScope of (string option * value) list
     | InnerScope of (string option * value) list * scope
 
 and value =
