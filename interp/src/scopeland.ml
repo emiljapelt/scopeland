@@ -30,11 +30,11 @@ let rec route_string route =
   )
   | h::t -> (match h with
     | Label(ln) -> ln ^ "." ^ route_string t
-    | Index(_) -> "[_]" ^ "." ^ route_string t
+    | Index(e) -> "["^expression_string e^"]" ^ "." ^ route_string t
     | OutOf -> "^" ^ "." ^ route_string t
   )
 
-let rec value_string value = match value with
+and value_string value = match value with
   | Value(i,Some n) -> n ^ ": " ^ string_of_int i
   | Value(i,None) -> string_of_int i
   | Closure(arg_n,body,_,Some n) -> n ^ ": " ^ arg_n ^ " -> " ^ expression_string body
@@ -94,11 +94,16 @@ let rec route_lookup route scope lscope =
     | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
     | _ -> None 
   )
-  | OutOf::[] -> raise_failure "OutOf: Cannot be last in route"
-  | OutOf::t -> ( match lscope with 
+  | OutOf::t -> ( 
+    let lookup = match lscope with 
     | InnerScope (_,NullScope)
     | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
-    | InnerScope (_,scp) -> route_lookup t scope scp
+    | InnerScope (_,scp) -> Some(ScopeVal(scp,None)) 
+    in
+    if t = [] then lookup
+    else match lookup with
+    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
+    | _ -> None 
   )
 
 and interpret_expression stmt_name_opt expr scope : (value * scope) = 
@@ -156,7 +161,7 @@ and interpret_scope stmts scope : (value * scope) =
     )
     | Anon(Scope(stmts)) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
-      let (_,inner_scope) = interpret_scope stmts (InnerScope([], scope)) in
+      let (_,inner_scope) = interpret_scope stmts (InnerScope([], rest_scope)) in
       (Value(1, None), add_to_local_scope [(None, ScopeVal(inner_scope,None))] rest_scope)
     )
     | Named(n,_) -> ( 
