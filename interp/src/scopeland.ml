@@ -81,10 +81,11 @@ let rec route_lookup route scope lscope =
     | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
     | _ -> None 
   )
-  | Index(e)::t -> (
+  | Index(e)::t -> ( 
     let lookup = match interpret_expression None e scope with
-    | (Value(i,_),_) -> (
-      match List.nth_opt (List.rev scope_vals) i with
+    | (Value(i,_),_) -> ( 
+      let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
+      match List.nth_opt scope_vals (abs i) with
       | Some(_,v) -> Some(v)
       | None -> None
     )
