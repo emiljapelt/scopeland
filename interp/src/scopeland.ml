@@ -56,6 +56,7 @@ and expression_string expr = match expr with
   | Func(arg, expr) -> arg ^ " -> " ^ expression_string expr
   | If(cond,expr1,expr2) -> "if " ^ expression_string cond ^ " then " ^ expression_string expr1 ^ " else " ^ expression_string expr2
   | Call(func, expr) -> expression_string func ^ " " ^ expression_string expr
+  | Match(expr, _) -> "match " ^ expression_string expr ^ " with"
 
 let get_values_of_scope scope = match scope with
   | NullScope -> raise_failure "Value lookup in the Null scope"
@@ -120,7 +121,11 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | Value(x,_),Value(y,_),"+" -> (Value(x + y, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"-" -> (Value(x - y, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"*" -> (Value(x * y, stmt_name_opt), scope)
+    | Value(x,_),Value(y,_),"=" -> if x = y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"<" -> if x < y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
+    | Value(x,_),Value(y,_),">" -> if x > y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
+    | Value(x,_),Value(y,_),"<=" -> if x <= y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
+    | Value(x,_),Value(y,_),">=" -> if x >= y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
   | Scope exprs -> interpret_scope exprs (InnerScope([], scope)) 
@@ -138,6 +143,18 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   | If(cond,expr1,expr2) -> (match interpret_expression stmt_name_opt cond scope with
     | (Value(0,_),_) -> interpret_expression stmt_name_opt expr2 scope
     | _ -> interpret_expression stmt_name_opt expr1 scope
+  )
+  | Match(expr, alts) -> (
+    let (value, _) = interpret_expression stmt_name_opt expr scope in
+    let do_match (case,res) = match value, case with
+      | Value(i,_), Constant(ci) -> if i = ci then Some(None,res) else None
+      | _, Route([Label(n)]) -> Some(Some n,res)
+      | _ -> None
+    in
+    match List.find_map do_match alts with
+    | Some(Some n,res) -> interpret_expression stmt_name_opt res (add_to_local_scope [Some n,value] scope)
+    | Some(None, res) -> interpret_expression stmt_name_opt res scope
+    | None -> raise_failure "No matching alternative"
   )
 
 and interpret_scope stmts scope : (value * scope) = 
@@ -190,4 +207,4 @@ let () =
     Printf.printf "%s\n" (value_string result)
   with 
   | Failure(_,_,exp) -> Printf.printf "Failure: %s\n" exp
-  | _ -> Printf.printf "Unknown error"
+  | _ -> Printf.printf "Unknown error\n"

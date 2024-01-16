@@ -7,6 +7,8 @@
                         "if", IF;
                         "then", THEN;
                         "else", ELSE;
+                        "match", MATCH;
+                        "with", WITH;
                       ]
 
   let incr_linenum lexbuf = 
@@ -37,6 +39,8 @@ rule lex = parse
     |   ','           { COMMA }
     |   '^'           { UP }
     |   '.'           { DOT }
+    |   '|'           { PIPE }
+    |   '\\'           { LAMBDA }
     |   ':'           { COLON }
     |   "->"          { ARROW }
     |   '_'           { UNDERSCORE }

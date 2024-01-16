@@ -7,6 +7,7 @@ type expression =
     | Func of string * expression
     | If of expression * expression * expression
     | Call of expression * expression
+    | Match of expression * (expression * expression) list
 
 and route = step list
 
