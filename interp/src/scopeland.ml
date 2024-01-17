@@ -139,7 +139,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
       in match result with
       | _ -> (result, scope)
     )
-    | _ -> raise_failure ("Call to non-callable: " ^ expression_string func)
+    | (v,_) -> raise_failure ("Call to non-callable: " ^ expression_string func ^ " -> " ^ value_string v)
   )
   | If(cond,expr1,expr2) -> (match interpret_expression stmt_name_opt cond scope with
     | (Value(0,_),_) -> interpret_expression stmt_name_opt expr2 scope
