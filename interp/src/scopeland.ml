@@ -101,7 +101,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
       let bindings = (arg_n,arg_val)::bindings in
       let func_c = Closure(List.map fst bindings |> List.rev,body,[],def_scp,fun_n) in
-      let (result,_) = interpret_scope body (InnerScope((fun_n, func_c)::(Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), def_scp)) (*(add_to_local_scope [(*(Some arg_n, arg_val);*)(fun_n, func_c)] def_scp)*)
+      let (result,_) = interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp)) (*(add_to_local_scope [(*(Some arg_n, arg_val);*)(fun_n, func_c)] def_scp)*)
       in match result with
       | _ -> (result, scope)
     )
