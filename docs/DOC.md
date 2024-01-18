@@ -45,7 +45,7 @@ my_name
 ### Binary Operation
 
 Used to compute over two elements, currently support: <br>
-+, -, *, =, <, >, <=, >=
++, -, *, =, !=, <, >, <=, >=
 
 ### Scope
 
@@ -60,8 +60,8 @@ consts: [
     ten: 10
 ],
 [
-    incr: \n -> n + 1,
-    double: \n -> 2 * n,
+    incr: [\n -> n + 1],
+    double: [\n -> 2 * n],
 ]
 ```
 
@@ -71,15 +71,15 @@ A scope with a positive number of undefined, but named, statements. These statem
 
 Examples:
 ```
-double: [n -> 2 * n],
-sum: [a -> if a then (sum (a - 1)) + a else 0],
-fib: [a -> match a with 
+double: [\n -> 2 * n],
+sum: [\a -> if a then (^.sum (a - 1)) + a else 0],
+fib: [\a -> match a with 
     | 0 -> 1
     | 1 -> 1 
-    | x -> (fib (x - 1)) + (fib (x - 2))
+    | _ -> (^.fib (a - 1)) + (^.fib (a - 2))
 ],
-add: [a b -> a + b],
-sub: [a -> [b -> ^.a - b]],
+add: [\a b -> a + b],
+sub: [\a -> [\b -> ^.a - b]],
 ```
 
 ### If
@@ -99,19 +99,19 @@ Examples:
 ```
 fib 10,
 ^.funcs.double 2,
-[x -> x - 1] 1,
+[\x -> x - 1] 1,
 ```
 
 ### Match
 
-Useful for reasoning about the value of an expression, and evaluating some other expression depending on the result.
+Useful for reasoning about the value of an expression, and evaluating some other expression depending on the result. Currently patterns can be any integer, or the wildcard '_'.
 
 Examples:
 ```
 match x with
 | 0 -> 1
 | 1 -> 1
-| x -> x - 1
+| _ -> x - 1
 ```
 
 # Routing
