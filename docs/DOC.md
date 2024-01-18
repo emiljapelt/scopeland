@@ -67,16 +67,19 @@ consts: [
 
 ### Func
 
-Defines a function taking 1 argument, and computing something.
+A scope with a positive number of undefined, but named, statements. These statements are defined at function application. Applications can be partial, and functions can return functions.
 
 Examples:
 ```
-double: \n -> 2 * n,
-sum: \a -> if a then (sum (a - 1)) + a else 0,
-fib: \a -> match a with 
+double: [n -> 2 * n],
+sum: [a -> if a then (sum (a - 1)) + a else 0],
+fib: [a -> match a with 
     | 0 -> 1
     | 1 -> 1 
-    | x -> (fib (x - 1)) + (fib (x - 2)),
+    | x -> (fib (x - 1)) + (fib (x - 2))
+],
+add: [a b -> a + b],
+sub: [a -> [b -> ^.a - b]],
 ```
 
 ### If
@@ -96,7 +99,7 @@ Examples:
 ```
 fib 10,
 ^.funcs.double 2,
-(\x -> x - 1) 1,
+[x -> x - 1] 1,
 ```
 
 ### Match

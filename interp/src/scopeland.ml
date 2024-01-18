@@ -20,44 +20,6 @@ let read_file path =
   let () = close_in_noerr file in
   content
 
-let rec route_string route =
-  match route with
-  | [] -> ""
-  | h::[] -> (match h with 
-    | Label(ln) -> ln
-    | Index(_) -> "[_]"
-    | OutOf -> "^"
-  )
-  | h::t -> (match h with
-    | Label(ln) -> ln ^ "." ^ route_string t
-    | Index(e) -> "["^expression_string e^"]" ^ "." ^ route_string t
-    | OutOf -> "^" ^ "." ^ route_string t
-  )
-
-and value_string value = match value with
-  | Value(i,Some n) -> n ^ ": " ^ string_of_int i
-  | Value(i,None) -> string_of_int i
-  | Closure(arg_n,body,_,Some n) -> n ^ ": " ^ arg_n ^ " -> " ^ expression_string body
-  | Closure(arg_n,body,_,None) -> arg_n ^ " -> " ^ expression_string body
-  | ScopeVal(NullScope,_) -> "null scope"
-  | ScopeVal(InnerScope(vals,_),_) -> (
-    let content = List.map (fun (n,_) -> match n with | Some n -> n | None -> "?") vals in
-    "[" ^ (String.concat ", " content) ^ "]"
-  )
-
-and expression_string expr = match expr with
-  | Constant i -> string_of_int i
-  | Route rt -> route_string rt
-  | Binop(op, expr1, expr2) -> "(" ^ expression_string expr1 ^ " " ^ op ^ " " ^ expression_string expr2 ^ ")"
-  | Scope(stmts) -> (
-    let content = List.map (fun stmt -> match stmt with | Named(n,_) -> n | Anon _ -> "?") stmts in
-    "[" ^ (String.concat ", " content) ^ "]"
-  ) 
-  | Func(arg, expr) -> arg ^ " -> " ^ expression_string expr
-  | If(cond,expr1,expr2) -> "if " ^ expression_string cond ^ " then " ^ expression_string expr1 ^ " else " ^ expression_string expr2
-  | Call(func, expr) -> expression_string func ^ " " ^ expression_string expr
-  | Match(expr, _) -> "match " ^ expression_string expr ^ " with"
-
 let get_values_of_scope scope = match scope with
   | NullScope -> raise_failure "Value lookup in the Null scope"
   | InnerScope(vals,_) -> vals
@@ -65,6 +27,8 @@ let get_values_of_scope scope = match scope with
 let add_to_local_scope adds scope = match scope with
   | NullScope -> raise_failure "Scope lookup in the Null scope"
   | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
+
+(*let list_append elem lst =  List.rev (elem::(List.rev lst))*)
 
 let rec route_lookup route scope lscope =
   let scope_vals = get_values_of_scope lscope in
@@ -130,14 +94,20 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
   | Scope exprs -> interpret_scope exprs (InnerScope([], scope)) 
-  | Func(arg,body) -> (Closure(arg, body, scope, stmt_name_opt), scope)
+  | Func(args,body) -> (Closure(args, body, [], scope, stmt_name_opt), scope)
   | Call(func,arg) -> ( 
     match interpret_expression stmt_name_opt func scope with
-    | (Closure(arg_n,body,def_scp,fun_n) as func_c,_) -> ( 
+    | (Closure([arg_n],body,bindings,def_scp,fun_n),_) -> ( 
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
-      let (result,_) = interpret_expression stmt_name_opt body (add_to_local_scope [(Some arg_n, arg_val);(fun_n, func_c)] def_scp)
+      let bindings = (arg_n,arg_val)::bindings in
+      let func_c = Closure(List.map fst bindings |> List.rev,body,[],def_scp,fun_n) in
+      let (result,_) = interpret_scope body (InnerScope((fun_n, func_c)::(Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), def_scp)) (*(add_to_local_scope [(*(Some arg_n, arg_val);*)(fun_n, func_c)] def_scp)*)
       in match result with
       | _ -> (result, scope)
+    )
+    | (Closure(arg_n::rest,body,bindings,def_scp,fun_n),_) -> ( 
+      let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
+      (Closure(rest,body,(arg_n, arg_val)::bindings,def_scp,fun_n), scope)
     )
     | (v,_) -> raise_failure ("Call to non-callable: " ^ expression_string func ^ " -> " ^ value_string v)
   )
@@ -162,14 +132,14 @@ and interpret_scope stmts scope : (value * scope) =
   match stmts with
   | [] -> (Value(0,None), scope)
   | h::t -> ( match h with
-    | Named(n,Func(arg,body)) -> ( 
+    | Named(n,Func(args,body)) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
-      let closure = Closure(arg,body,rest_scope,Some n) in
+      let closure = Closure(args,body,[],rest_scope,Some n) in
       (closure, add_to_local_scope [(Some n,closure)] rest_scope)
     )
-    | Anon(Func(arg,body)) -> ( 
+    | Anon(Func(args,body)) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
-      let closure = Closure(arg,body,rest_scope, None) in
+      let closure = Closure(args,body,[],rest_scope, None) in
       (closure, add_to_local_scope [(None,closure)] rest_scope)
     )
     | Named(n,Scope(stmts)) -> ( 
