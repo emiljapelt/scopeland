@@ -16,20 +16,18 @@
 %token <string> NAME
 %token LPAR RPAR LBRAKE RBRAKE
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
-%token PIPE NOT
+%token PIPE
 %token COMMA DOT UP COLON EOF
 %token IF THEN ELSE MATCH WITH
 %token UNDERSCORE
-%token LAMBDA
-%token ARROW
+%token ARROW LAMBDA
 
 /*Low precedence*/
-%right ARROW
+%left ELSE
 %left EQ NEQ
 %left GT LT GTEQ LTEQ
 %left PLUS MINUS
 %left TIMES 
-%nonassoc NOT
 /*High precedence*/
 
 %start main
@@ -40,31 +38,40 @@ main:
 ;
 
 stmt:
-    expression { Anon $1 }
-  | NAME COLON expression { Named($1, $3) }
+    expression_with_match { Anon $1 }
+  | NAME COLON expression_with_match { Named($1, $3) }
+;
+
+expression_with_match:
+  MATCH expression WITH match_alts { Match($2, $4) }
+  | expression { $1 }
 ;
 
 expression:
   call { expr_list_to_call $1 }
-  | expression_no_call { $1 }
+  | simple_expression { $1 }
+  | expression binop expression { Binop($2, $1, $3) }
 ;
 
-expression_no_call:
+simple_expression:
   CSTINT { Constant $1 }
   | route { Route $1 }
-  | expression PLUS expression { Binop("+", $1, $3) }
-  | expression MINUS expression { Binop("-", $1, $3) }
-  | expression TIMES expression { Binop("*", $1, $3) }
-  | expression EQ expression { Binop("=", $1, $3) }
-  | expression LT expression { Binop("<", $1, $3) }
-  | expression GT expression { Binop(">", $1, $3) }
-  | expression LTEQ expression { Binop("<=", $1, $3) }
-  | expression GTEQ expression { Binop(">=", $1, $3) }
   | LBRAKE scope RBRAKE { Scope (List.rev $2) }
-  | LBRAKE args ARROW scope RBRAKE { Func($2, (List.rev $4)) }
+  | LBRAKE LAMBDA args ARROW scope RBRAKE { Func($3, (List.rev $5)) }
   | IF expression THEN expression ELSE expression { If($2, $4, $6) }
-  | MATCH expression WITH match_alts { Match($2, $4) }
-  | LPAR expression RPAR { $2 }
+  | LPAR expression_with_match RPAR { $2 }
+;
+
+%inline binop:
+  | PLUS    { ("+") }
+  | MINUS   { ("-") }
+  | TIMES   { ("*") } 
+  | EQ      { ("=") }
+  | NEQ     { ("!=") }
+  | LT      { ("<") }
+  | GT      { (">") }
+  | LTEQ    { ("<=") }
+  | GTEQ    { (">=") }
 ;
 
 args:
@@ -73,12 +80,17 @@ args:
 ;
 
 call:
-  expression_no_call expression_no_call { [$1;$2] }
-  | expression_no_call call { $1 :: $2 }
+  simple_expression simple_expression { [$1;$2] }
+  | simple_expression call { $1 :: $2 }
+;
+
+pattern:
+  CSTINT { Concrete $1 }
+  | UNDERSCORE { Any }
 ;
 
 match_alt:
-  PIPE expression ARROW expression { ($2, $4) }
+  PIPE pattern ARROW expression { ($2, $4) }
 ;
 
 match_alts:
@@ -93,7 +105,7 @@ route:
 
 step: 
   NAME { Label $1 }
-  | LBRAKE expression RBRAKE { Index $2 }
+  | LBRAKE COLON expression RBRAKE { Index $3 }
   | UP { OutOf }
 ;
 

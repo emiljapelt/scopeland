@@ -7,18 +7,22 @@ type expression =
     | Func of string list * stmt list
     | If of expression * expression * expression
     | Call of expression * expression
-    | Match of expression * (expression * expression) list
+    | Match of expression * (pattern * expression) list
 
-and route = step list
-
-and step = 
-    | Label of string
-    | Index of expression
-    | OutOf 
+and pattern =
+    | Concrete of int
+    | Any 
 
 and stmt =
     | Named of string * expression
     | Anon of expression
+
+and step = 
+    | Label of string
+    | Index of expression
+    | OutOf
+    
+and route = step list
 
 and scope = 
     | NullScope
@@ -56,6 +60,10 @@ and value_string value = match value with
         let content = List.map (fun (n,_) -> match n with | Some n -> n | None -> "?") vals in
         "[" ^ (String.concat ", " content) ^ "]"
     )
+
+(*and pattern_string pat = match pat with
+    | Concrete i -> string_of_int i
+    | Any -> "_"*)
 
 and expression_string expr = match expr with
     | Constant i -> string_of_int i

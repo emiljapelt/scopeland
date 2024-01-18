@@ -31,7 +31,12 @@ rule lex = parse
     |   '+'           { PLUS }
     |   '-'           { MINUS }
     |   '*'           { TIMES }
+    |   '='           { EQ }
+    |   "!="          { NEQ }
     |   '<'           { LT }
+    |   '>'           { GT }
+    |   "<="          { LTEQ }
+    |   ">="          { GTEQ }
     |   '('           { LPAR }
     |   ')'           { RPAR }
     |   '['           { LBRAKE }
@@ -40,7 +45,7 @@ rule lex = parse
     |   '^'           { UP }
     |   '.'           { DOT }
     |   '|'           { PIPE }
-    |   '\\'           { LAMBDA }
+    |   '\\'          { LAMBDA }
     |   ':'           { COLON }
     |   "->"          { ARROW }
     |   '_'           { UNDERSCORE }

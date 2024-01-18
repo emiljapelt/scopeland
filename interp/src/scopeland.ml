@@ -87,6 +87,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | Value(x,_),Value(y,_),"-" -> (Value(x - y, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"*" -> (Value(x * y, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"=" -> if x = y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
+    | Value(x,_),Value(y,_),"!=" -> if not(x = y) then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"<" -> if x < y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),">" -> if x > y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"<=" -> if x <= y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
@@ -117,9 +118,9 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   )
   | Match(expr, alts) -> (
     let (value, _) = interpret_expression stmt_name_opt expr scope in
-    let do_match (case,res) = match value, case with
-      | Value(i,_), Constant(ci) -> if i = ci then Some(None,res) else None
-      | _, Route([Label(n)]) -> Some(Some n,res)
+    let do_match (pat,res) = match value, pat with
+      | Value(i,_), Concrete(ci) -> if i = ci then Some(None,res) else None
+      | _, Any -> Some(None,res)
       | _ -> None
     in
     match List.find_map do_match alts with
