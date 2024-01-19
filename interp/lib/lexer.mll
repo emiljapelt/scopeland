@@ -45,6 +45,7 @@ rule lex = parse
     |   '^'           { UP }
     |   '.'           { DOT }
     |   '|'           { PIPE }
+    |   '&'           { AND }
     |   '\\'          { LAMBDA }
     |   ':'           { COLON }
     |   "->"          { ARROW }

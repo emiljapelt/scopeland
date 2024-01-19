@@ -16,7 +16,7 @@
 %token <string> NAME
 %token LPAR RPAR LBRAKE RBRAKE
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
-%token PIPE
+%token PIPE AND
 %token COMMA DOT UP COLON EOF
 %token IF THEN ELSE MATCH WITH
 %token UNDERSCORE
@@ -25,6 +25,7 @@
 /*Low precedence*/
 %left EQ NEQ
 %left GT LT GTEQ LTEQ
+%left AND
 %left PLUS MINUS
 %left TIMES 
 /*High precedence*/
@@ -71,6 +72,7 @@ simple_expression:
   | GT      { (">") }
   | LTEQ    { ("<=") }
   | GTEQ    { (">=") }
+  | AND     { ("&") }
 ;
 
 args:
@@ -84,9 +86,16 @@ call:
 ;
 
 pattern:
+  simple_pattern { $1 }
+  | simple_pattern AND pattern { ScopePat($1,$3) }
+;
+
+simple_pattern:
   CSTINT { Concrete $1 }
   | NAME { Name $1 }
+  | LBRAKE RBRAKE { Empty }
   | UNDERSCORE { Any }
+  | LBRAKE pattern RBRAKE { $2 }
 ;
 
 match_alt:

@@ -12,6 +12,8 @@ type expression =
 and pattern =
     | Concrete of int
     | Name of string
+    | ScopePat of pattern * pattern
+    | Empty
     | Any 
 
 and stmt =
@@ -36,6 +38,11 @@ and value =
 
 and file = 
     | File of stmt
+
+let value_name v = match v with
+    | Value(_,n)
+    | Closure(_,_,_,_,n)
+    | ScopeVal(_,n) -> n
 
 let rec route_string route =
     match route with

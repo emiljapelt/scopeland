@@ -78,8 +78,8 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | None -> raise_failure ("Unknown label: " ^ route_string rt)
   )
   | Binop (op,expr1,expr2) -> (
-    let (val1,_) = interpret_expression stmt_name_opt expr1 scope in
-    let (val2,_) = interpret_expression stmt_name_opt expr2 scope in
+    let (val1,_) = interpret_expression None expr1 scope in
+    let (val2,_) = interpret_expression None expr2 scope in
     match val1, val2, op with 
     | Value(x,_),Value(y,_),"+" -> (Value(x + y, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"-" -> (Value(x - y, stmt_name_opt), scope)
@@ -90,6 +90,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | Value(x,_),Value(y,_),">" -> if x > y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),"<=" -> if x <= y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
     | Value(x,_),Value(y,_),">=" -> if x >= y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
+    | ScopeVal(scope,_), _, "&" -> (ScopeVal(add_to_local_scope [value_name val2, val2] scope,None), scope)
     | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
   | Scope exprs -> interpret_scope exprs (InnerScope([], scope)) 
@@ -116,21 +117,25 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   )
   | Match(expr, alts) -> (
     let (value, _) = interpret_expression stmt_name_opt expr scope in
-    let do_match (pat,res) = match value, pat with
-      | Value(i,_), Concrete(ci) -> if i = ci then Some(None,res) else None
-      | _, Name n -> Some(Some n, res)
-      | _, Any -> Some(None,res)
+    let rec do_match v (pat,res) = match v, pat with
+      | Value(i,_), Concrete(ci) -> if i = ci then Some([None,v],res) else None
+      | ScopeVal(InnerScope([],_),_), Empty -> Some([None,v],res)
+      | ScopeVal(InnerScope((_,h)::t,a),b), ScopePat(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a),b)) (tp,res) with
+        | Some(h_binds,_),Some(t_binds,_) -> Some(t_binds@h_binds,res)
+        | _ -> None
+      )
+      | _, Name n -> Some([Some n,v],res)
+      | _, Any -> Some([None,v],res)
       | _ -> None
     in
-    match List.find_map do_match alts with
-    | Some(Some n,res) -> interpret_expression stmt_name_opt res (add_to_local_scope [Some n,value] scope)
-    | Some(None, res) -> interpret_expression stmt_name_opt res scope
+    match List.find_map (do_match value) alts with
+    | Some(binds,res) -> interpret_expression stmt_name_opt res (add_to_local_scope (List.rev binds) scope)
     | None -> raise_failure "No matching alternative"
   )
 
 and interpret_scope stmts scope : (value * scope) = 
   match stmts with
-  | [] -> (Value(0,None), scope)
+  | [] -> (ScopeVal(InnerScope([], scope),None), scope)
   | h::t -> ( match h with
     | Named(n,Func(args,body)) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
