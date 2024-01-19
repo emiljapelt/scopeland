@@ -183,4 +183,4 @@ let () =
     Printf.printf "%s\n" (value_string result)
   with 
   | Failure(_,_,exp) -> Printf.printf "Failure: %s\n" exp
-  | _ -> Printf.printf "Unknown error\n"
+  | _ -> Printf.printf "Unknown error (likely a parser error)\n"

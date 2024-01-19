@@ -11,6 +11,7 @@
     match exprs with
     | e1::e2::t -> aux t (Call(e1,e2))
     | _ -> raise_failure "Call of bad format"
+
 %}
 %token <int> CSTINT
 %token <string> NAME
@@ -87,7 +88,7 @@ call:
 
 pattern:
   simple_pattern { $1 }
-  | simple_pattern AND pattern { ScopePat($1,$3) }
+  | pattern AND simple_pattern { ScopePat($1,$3) }
 ;
 
 simple_pattern:
@@ -95,7 +96,7 @@ simple_pattern:
   | NAME { Name $1 }
   | LBRAKE RBRAKE { Empty }
   | UNDERSCORE { Any }
-  | LBRAKE pattern RBRAKE { $2 }
+  | LPAR pattern RPAR { $2 }
 ;
 
 match_alt:
