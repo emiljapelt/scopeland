@@ -23,7 +23,6 @@
 %token ARROW LAMBDA
 
 /*Low precedence*/
-%left ELSE
 %left EQ NEQ
 %left GT LT GTEQ LTEQ
 %left PLUS MINUS
@@ -58,7 +57,7 @@ simple_expression:
   | route { Route $1 }
   | LBRAKE scope RBRAKE { Scope (List.rev $2) }
   | LBRAKE LAMBDA args ARROW scope RBRAKE { Func($3, (List.rev $5)) }
-  | IF expression THEN expression ELSE expression { If($2, $4, $6) }
+  | IF expression THEN expression ELSE simple_expression { If($2, $4, $6) }
   | LPAR expression_with_match RPAR { $2 }
 ;
 

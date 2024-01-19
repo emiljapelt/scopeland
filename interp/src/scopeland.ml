@@ -28,8 +28,6 @@ let add_to_local_scope adds scope = match scope with
   | NullScope -> raise_failure "Scope lookup in the Null scope"
   | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
 
-(*let list_append elem lst =  List.rev (elem::(List.rev lst))*)
-
 let rec route_lookup route scope lscope =
   let scope_vals = get_values_of_scope lscope in
   match route with
