@@ -11,6 +11,7 @@ type expression =
 
 and pattern =
     | Concrete of int
+    | Name of string
     | Any 
 
 and stmt =

@@ -118,6 +118,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     let (value, _) = interpret_expression stmt_name_opt expr scope in
     let do_match (pat,res) = match value, pat with
       | Value(i,_), Concrete(ci) -> if i = ci then Some(None,res) else None
+      | _, Name n -> Some(Some n, res)
       | _, Any -> Some(None,res)
       | _ -> None
     in

@@ -85,6 +85,7 @@ call:
 
 pattern:
   CSTINT { Concrete $1 }
+  | NAME { Name $1 }
   | UNDERSCORE { Any }
 ;
 
