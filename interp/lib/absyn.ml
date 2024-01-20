@@ -65,20 +65,16 @@ and value_string value = match value with
     | Closure(args_n,body,_,_,None) -> String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
     | ScopeVal(NullScope,_) -> "null scope"
     | ScopeVal(InnerScope(vals,_),_) -> (
-        let content = List.map (fun (n,_) -> match n with | Some n -> n | None -> "?") vals in
+        let content = List.map (fun (_,v) -> value_string v) (List.rev vals) in
         "[" ^ (String.concat ", " content) ^ "]"
     )
-
-(*and pattern_string pat = match pat with
-    | Concrete i -> string_of_int i
-    | Any -> "_"*)
 
 and expression_string expr = match expr with
     | Constant i -> string_of_int i
     | Route rt -> route_string rt
     | Binop(op, expr1, expr2) -> "(" ^ expression_string expr1 ^ " " ^ op ^ " " ^ expression_string expr2 ^ ")"
     | Scope(stmts) -> (
-        let content = List.map (fun stmt -> match stmt with | Named(n,_) -> n | Anon _ -> "?") stmts in
+        let content = List.map (fun stmt -> match stmt with | Named(n,e) -> n^": "^expression_string e | Anon e -> expression_string e) stmts in
         "[" ^ (String.concat ", " content) ^ "]"
     ) 
     | Func(args, stmts) -> (String.concat " " args) ^ " -> " ^ expression_string (Scope stmts)

@@ -49,7 +49,7 @@ Used to compute over two elements, currently support: <br>
 
 ### Scope
 
-A collection of statements, by way of a comma-separated array. A statement can refer directly to other statements in the scope, which are defined prior to itself. When evaluated, the result is the value of the last statement in the scope, or '0' if the scope is empty. 
+A collection of statements, by way of a comma-separated array. A statement can refer directly to other statements in the scope, which are defined prior to itself.
 
 Examples:
 ```

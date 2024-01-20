@@ -77,6 +77,16 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | Some(v) -> (v, scope)
     | None -> raise_failure ("Unknown label: " ^ route_string rt)
   )
+  | Binop ("=",Scope [], expr)
+  | Binop ("=",expr, Scope []) -> ( match interpret_expression None expr scope with
+    | (ScopeVal(InnerScope([],_),_),_) -> (Value(1, stmt_name_opt), scope)
+    | _ -> (Value(0, stmt_name_opt), scope)
+  )
+  | Binop ("!=",Scope [], expr)
+  | Binop ("!=",expr, Scope []) -> ( match interpret_expression None expr scope with
+    | (ScopeVal(InnerScope([],_),_),_) -> (Value(0, stmt_name_opt), scope)
+    | _ -> (Value(1, stmt_name_opt), scope)
+  )
   | Binop (op,expr1,expr2) -> (
     let (val1,_) = interpret_expression None expr1 scope in
     let (val2,_) = interpret_expression None expr2 scope in
@@ -150,12 +160,12 @@ and interpret_scope stmts scope : (value * scope) =
     | Named(n,Scope(stmts)) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
       let (_,inner_scope) = interpret_scope stmts (InnerScope([], rest_scope)) in
-      (Value(1,Some n), add_to_local_scope [(Some n,ScopeVal(inner_scope,Some n))] rest_scope)
+      (ScopeVal(inner_scope,Some n), add_to_local_scope [(Some n,ScopeVal(inner_scope,Some n))] rest_scope)
     )
     | Anon(Scope(stmts)) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
       let (_,inner_scope) = interpret_scope stmts (InnerScope([], rest_scope)) in
-      (Value(1, None), add_to_local_scope [(None, ScopeVal(inner_scope,None))] rest_scope)
+      (ScopeVal(inner_scope,None), add_to_local_scope [(None, ScopeVal(inner_scope,None))] rest_scope)
     )
     | Named(n,_) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
