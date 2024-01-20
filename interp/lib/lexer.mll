@@ -43,6 +43,7 @@ rule lex = parse
     |   ']'           { RBRAKE }
     |   ','           { COMMA }
     |   '^'           { UP }
+    |   '@'           { AT }
     |   '.'           { DOT }
     |   '|'           { PIPE }
     |   '&'           { AND }

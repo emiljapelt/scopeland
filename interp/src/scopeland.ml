@@ -69,6 +69,18 @@ let rec route_lookup route scope lscope =
     | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
     | _ -> None 
   )
+  | FullOut::t -> (
+    let rec aux scp = match scp with
+      | NullScope -> raise_failure "FullOut: Hit the Null scope"
+      | InnerScope(_, NullScope) -> Some(ScopeVal(scp,None))
+      | InnerScope(_, scp) -> aux scp
+    in
+    let lookup = aux lscope in
+    if t = [] then lookup
+    else match lookup with
+    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
+    | _ -> None 
+  )
 
 and interpret_expression stmt_name_opt expr scope : (value * scope) = 
   match expr with

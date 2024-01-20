@@ -13,7 +13,7 @@ In the following example is three statements, all are a constant integer express
 ...
 my_name: 1337,
 9001,
-!999,
+!999,p
 ...
 ```
 
@@ -35,6 +35,7 @@ This is the way to access other defined statements in the program. There are a h
 | _name_ | Lookup the value of a named statement, in the current scope. |
 | [_expr_] | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. [-1] referes to the last statement. |
 | ^ | Goes to the containing scope, or crashes if there is no containing scope. | 
+| @ | Goes to the outermost scope |
 
 Here are a few syntax examples, we go in further details in [Routing](#routing).
 ```

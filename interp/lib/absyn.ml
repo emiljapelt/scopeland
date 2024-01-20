@@ -25,6 +25,7 @@ and step =
     | Label of string
     | Index of expression
     | OutOf
+    | FullOut
     
 and route = step list
 
@@ -52,11 +53,13 @@ let rec route_string route =
         | Label(ln) -> ln
         | Index(expr) -> "["^expression_string expr^"]"
         | OutOf -> "^"
+        | FullOut -> "@"
     )
     | h::t -> (match h with
         | Label(ln) -> ln ^ "." ^ route_string t
         | Index(e) -> "["^expression_string e^"]" ^ "." ^ route_string t
-        | OutOf -> "^" ^ "." ^ route_string t
+        | OutOf -> "^." ^ route_string t
+        | FullOut -> "@." ^ route_string t
     )
 
 and value_string value = match value with

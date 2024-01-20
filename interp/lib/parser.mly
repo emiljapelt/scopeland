@@ -17,7 +17,7 @@
 %token <string> NAME
 %token LPAR RPAR LBRAKE RBRAKE
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
-%token PIPE AND EXCLAIM
+%token PIPE AND EXCLAIM AT
 %token COMMA DOT UP COLON EOF
 %token IF THEN ELSE MATCH WITH
 %token UNDERSCORE
@@ -118,6 +118,7 @@ step:
   NAME { Label $1 }
   | LBRAKE COLON expression RBRAKE { Index $3 }
   | UP { OutOf }
+  | AT { FullOut }
 ;
 
 scope:
