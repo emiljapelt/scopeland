@@ -32,7 +32,7 @@ This is the way to access other defined statements in the program. There are a h
 | Syntax | Explaination |
 |---|---|
 | _name_ | Lookup the value of a named statement, in the current scope. |
-| [_expr_] | Index into a scope, first element is at 0, and lookup with negative values, starts for the last defined element, i.e. [-1] referes to the previous statement. |
+| [_expr_] | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. [-1] referes to the last statement. |
 | ^ | Goes to the containing scope, or crashes if there is no containing scope. | 
 
 Here are a few syntax examples, we go in further details in [Routing](#routing).
@@ -49,7 +49,7 @@ Used to compute over two elements, currently support: <br>
 
 ### Scope
 
-A collection of statements, by way of a comma-separated array. A statement can refer directly to other statements in the scope, which are defined prior to itself. When evaluated, then result is the value of the last statement in the scope, or '0' if the scope is empty. 
+A collection of statements, by way of a comma-separated array. A statement can refer directly to other statements in the scope, which are defined prior to itself. When evaluated, the result is the value of the last statement in the scope, or '0' if the scope is empty. 
 
 Examples:
 ```
@@ -67,7 +67,7 @@ consts: [
 
 ### Func
 
-A scope with a positive number of undefined, but named, statements. These statements are defined at function application. Applications can be partial, and functions can return functions.
+A scope with a positive number of undefined, but named, statements. These statements are defined at function application. Applications can be partial, and functions return the value of their last operation.
 
 Examples:
 ```
@@ -106,14 +106,24 @@ fib 10,
 
 Useful for reasoning about the value of an expression, and evaluating some other expression depending on the result. Currently patterns can be any integer, or the wildcard '_'.
 
+Patterns:
+| Pattern | Example | Explaination |
+| --- | --- | -- |
+| _ | _ | Matches anything |
+| _name_ | x | Matches anything, and binds it to the name |
+| _int_ | 1 | Matches a specific integer |
+| [] | [] | Matches the empty scope |
+| _p1_ & _p2_ | t&h | Matches the scope where the last element matches _p2_ and the rest matches _p1_ |
+
 Examples:
 ```
-match x with
-| 0 -> 1
-| 1 -> 1
-| _ -> x - 1
+[\x -> match x with
+    | 0 -> 1
+    | 1 -> 1
+    | _ -> x - 1
+],
+rev: [\l acc -> match l with
+    | [] -> acc
+    | t&h -> ^.rev t (acc&h)
+],
 ```
-
-# Routing
-
-Explaination coming soon :)
