@@ -5,14 +5,15 @@ A functional programming language, where the abstract syntax is exposed to the p
 # Language Constructs
 ## Statements
 
-Statements are simply expressions, which may optionally be given a name for easier referencing.
+Statements are simply expressions, which may optionally be given a name for easier referencing. Additionally, an output statement exists for printing to the console.
 
-In the following example is two statements, both a constant integer expression, but one is given the name 'my_name'.
+In the following example is three statements, all are a constant integer expressions, but one is given the name 'my_name', and one is printed.
 
 ```
 ...
 my_name: 1337,
 9001,
+!999,
 ...
 ```
 
