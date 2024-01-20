@@ -17,7 +17,7 @@
 %token <string> NAME
 %token LPAR RPAR LBRAKE RBRAKE
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
-%token PIPE AND
+%token PIPE AND EXCLAIM
 %token COMMA DOT UP COLON EOF
 %token IF THEN ELSE MATCH WITH
 %token UNDERSCORE
@@ -41,6 +41,7 @@ main:
 stmt:
     expression_with_match { Anon $1 }
   | NAME COLON expression_with_match { Named($1, $3) }
+  | EXCLAIM expression_with_match { Out $2 }
 ;
 
 expression_with_match:

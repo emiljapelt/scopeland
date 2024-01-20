@@ -19,6 +19,7 @@ and pattern =
 and stmt =
     | Named of string * expression
     | Anon of expression
+    | Out of expression
 
 and step = 
     | Label of string
@@ -49,7 +50,7 @@ let rec route_string route =
     | [] -> ""
     | h::[] -> (match h with 
         | Label(ln) -> ln
-        | Index(_) -> "[_]"
+        | Index(expr) -> "["^expression_string expr^"]"
         | OutOf -> "^"
     )
     | h::t -> (match h with
@@ -74,7 +75,11 @@ and expression_string expr = match expr with
     | Route rt -> route_string rt
     | Binop(op, expr1, expr2) -> "(" ^ expression_string expr1 ^ " " ^ op ^ " " ^ expression_string expr2 ^ ")"
     | Scope(stmts) -> (
-        let content = List.map (fun stmt -> match stmt with | Named(n,e) -> n^": "^expression_string e | Anon e -> expression_string e) stmts in
+        let content = List.map (fun stmt -> match stmt with 
+            | Named(n,e) -> n^": "^expression_string e 
+            | Anon e -> expression_string e
+            | _ -> ""
+        ) stmts in
         "[" ^ (String.concat ", " content) ^ "]"
     ) 
     | Func(args, stmts) -> (String.concat " " args) ^ " -> " ^ expression_string (Scope stmts)

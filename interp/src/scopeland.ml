@@ -147,6 +147,15 @@ and interpret_scope stmts scope : (value * scope) =
   match stmts with
   | [] -> (ScopeVal(InnerScope([], scope),None), scope)
   | h::t -> ( match h with
+    | Out expr -> (
+      let (_,rest_scope) = interpret_scope t scope in
+      let (v,_) = interpret_expression None expr rest_scope in
+      Printf.printf "%s\n" (value_string v); 
+      match rest_scope with
+      | NullScope -> failwith "Null scope propegation"
+      | InnerScope([],_) -> (ScopeVal(InnerScope([], scope),None), scope)
+      | InnerScope((_,v)::_,_) -> (v, rest_scope)
+    )
     | Named(n,Func(args,body)) -> ( 
       let (_,rest_scope) = interpret_scope t scope in
       let closure = Closure(args,body,[],rest_scope,Some n) in
@@ -182,6 +191,7 @@ and interpret_scope stmts scope : (value * scope) =
 and interpret_statement stmt scope : (value * scope) = match stmt with
   | Named(name,expr) -> interpret_expression (Some name) expr scope
   | Anon expr -> interpret_expression None expr scope
+  | Out _ -> failwith "Dunno"
 
 and interpret file = match file with File(stmt) -> interpret_statement stmt NullScope
 
