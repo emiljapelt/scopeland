@@ -20,6 +20,7 @@ and stmt =
     | Named of string * expression
     | Anon of expression
     | Out of expression
+    | Import of route
 
 and step = 
     | Label of string

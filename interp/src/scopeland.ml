@@ -14,11 +14,24 @@ let resolve_input () =
   | Invalid_argument _ -> raise_failure "No file given to compile"
   | ex -> raise ex
 
+let route_to_path route =
+  let rec aux rt acc = match rt with
+    | [] -> (String.concat "/" (List.rev acc))^".scl"
+    | Label n :: t -> aux t (n::acc)
+    | OutOf :: t -> aux t (".."::acc)
+    | FullOut :: t -> aux t ["/"]
+    | Index _ :: _ -> raise_failure "Indexing for imports is not supported"
+  in
+  aux route ["."]
+
 let read_file path =
   let file = open_in path in
   let content = really_input_string (file) (in_channel_length file) in
   let () = close_in_noerr file in
   content
+
+  let read_input input = 
+    Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input))
 
 let get_values_of_scope scope = match scope with
   | NullScope -> raise_failure "Value lookup in the Null scope"
@@ -168,6 +181,14 @@ and interpret_scope stmts scope : scope =
       Printf.printf "%s\n" (value_string v); 
       None
     )
+    | Import rt -> (
+      let path = route_to_path rt in 
+      try (
+        match read_input path with
+        | File stmt -> let (v,_) = interpret_statement stmt NullScope in Some(value_name v, v) 
+      )
+      with _ -> raise_failure ("Could not import: '" ^ route_string rt ^ "' aka. " ^ path)
+    )
     | Named(n,Func(args,body)) -> ( 
       Some(Some n, Closure(args,body,[],rest_scope,Some n))
     )
@@ -197,14 +218,21 @@ and interpret_scope stmts scope : scope =
 and interpret_statement stmt scope : (value * scope) = match stmt with
   | Named(name,expr) -> interpret_expression (Some name) expr scope
   | Anon expr -> interpret_expression None expr scope
-  | Out _ -> failwith "Printing outside scope"
+  | Out _ -> raise_failure "Printing outside scope"
+  | Import rt -> (
+    let path = route_to_path rt in 
+      try (
+        match read_input path with
+        | File stmt -> interpret_statement stmt NullScope
+      )
+      with _ -> raise_failure ("Could not import: '" ^ route_string rt ^ "' aka. " ^ path)
+  )
 
 and interpret file = match file with File(stmt) -> interpret_statement stmt NullScope
 
 let () =
   try 
-    let input = resolve_input () in
-    let absyn = Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input)) in
+    let absyn = read_input (resolve_input ()) in
     match interpret absyn with
     | (ScopeVal(InnerScope((_,v)::_,_),_),_) (* If program is a scope, only print the last value *)
     | (v,_) -> Printf.printf "%s\n" (value_string v)

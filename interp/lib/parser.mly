@@ -19,7 +19,7 @@
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
 %token PIPE AND EXCLAIM AT
 %token COMMA DOT UP COLON EOF
-%token IF THEN ELSE MATCH WITH
+%token IF THEN ELSE MATCH WITH IMPORT 
 %token UNDERSCORE
 %token ARROW LAMBDA
 
@@ -42,6 +42,7 @@ stmt:
     expression_with_match { Anon $1 }
   | NAME COLON expression_with_match { Named($1, $3) }
   | EXCLAIM expression_with_match { Out $2 }
+  | IMPORT route { Import $2 }
 ;
 
 expression_with_match:

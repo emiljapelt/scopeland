@@ -9,6 +9,7 @@
                         "else", ELSE;
                         "match", MATCH;
                         "with", WITH;
+                        "import", IMPORT;
                       ]
 
   let incr_linenum lexbuf = 

@@ -1,19 +1,26 @@
 # ScopeLand
 
-A functional programming language, where the abstract syntax is exposed to the programmer.
+A functional programming language, where the programs data structure is exposed to the programmer.
 
 # Language Constructs
 ## Statements
 
-Statements are simply expressions, which may optionally be given a name for easier referencing. Additionally, an output statement exists for printing to the console.
+| statement | explaination |
+| --- | --- | 
+| Anon | An unnamed expression. |
+| Named | A named expression. |
+| Output | Prints an expression to console. |
+| Import | Imports another source file, using the scopeland route syntax, excluding indexing. |
 
-In the following example is three statements, all are a constant integer expressions, but one is given the name 'my_name', and one is printed.
+
+In the following example is four statements. First is an anonymous statement, a named statement, an output statement, and finally an import statement.
 
 ```
 ...
-my_name: 1337,
 9001,
-!999,p
+my_name: 1337,
+!999,
+import ^.std,
 ...
 ```
 
