@@ -1,0 +1,25 @@
+{
+  "name": "scopeland-highlighting",
+  "displayName": "scopeland highlighting",
+  "description": "Syntax highlighting for the scopeland langauge",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "scopeland",
+      "aliases": ["scopeland", "scopeland"],
+      "extensions": [".scl"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "scopeland",
+      "scopeName": "source.sep",
+      "path": "./syntaxes/scopeland.tmLanguage.json"
+    }]
+  }
+}

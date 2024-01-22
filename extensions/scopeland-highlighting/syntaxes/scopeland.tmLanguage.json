@@ -1,0 +1,55 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "scopeland",
+	"patterns": [
+		{ "include": "#comments" },
+		{ "include": "#stmts" },
+		{ "include": "#exprs"}
+	],
+	"repository": {
+		"stmts": {
+			"patterns": [{
+				"name": "keyword",
+				"match": "\\b(import)\\b"
+			},{
+				"name": "keyword",
+				"match": "\\b([A-Za-z_]+):\\b"
+			},{
+				"include": "#scope"
+			},{
+				"include": "#exprs"
+			}]
+		},
+		"scope": {
+			"begin": "\\[",
+			"end": "\\]",
+			"patterns": [{
+				"include": "#scope_inner"
+			}]
+		},
+		"scope_inner": {
+			"patterns": [{
+				"include": "#scope"
+			},{
+				"include": "#stmts"
+			},{
+				"include": "#exprs"
+			}]
+		},
+		"exprs": {
+			"patterns": [{
+				"name": "constant.numeric",
+				"match": "\\b(-?[0-9]+)\\b"
+			},{
+				"name": "variable",
+				"match": "\\b(^|@|([A-Za-z_]+))\\b"
+			}]
+		},
+		"comments": {
+			"name": "comment.line",
+			"begin": "//",
+			"end": "\\n"
+		}
+	},
+	"scopeName": "source.sep"
+}
