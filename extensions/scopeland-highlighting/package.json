@@ -12,13 +12,13 @@
   "contributes": {
     "languages": [{
       "id": "scopeland",
-      "aliases": ["scopeland", "scopeland"],
+      "aliases": ["scopeland", "Scopeland"],
       "extensions": [".scl"],
       "configuration": "./language-configuration.json"
     }],
     "grammars": [{
       "language": "scopeland",
-      "scopeName": "source.sep",
+      "scopeName": "source.scl",
       "path": "./syntaxes/scopeland.tmLanguage.json"
     }]
   }

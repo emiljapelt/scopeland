@@ -3,8 +3,7 @@
 	"name": "scopeland",
 	"patterns": [
 		{ "include": "#comments" },
-		{ "include": "#stmts" },
-		{ "include": "#exprs"}
+		{ "include": "#stmts" }
 	],
 	"repository": {
 		"stmts": {
@@ -12,8 +11,8 @@
 				"name": "keyword",
 				"match": "\\b(import)\\b"
 			},{
-				"name": "keyword",
-				"match": "\\b([A-Za-z_]+):\\b"
+				"name": "variable",
+				"match": "\\b([A-Za-z][A-Za-z0-9_]*):\\b"
 			},{
 				"include": "#scope"
 			},{
@@ -41,8 +40,16 @@
 				"name": "constant.numeric",
 				"match": "\\b(-?[0-9]+)\\b"
 			},{
+				"include": "#keywords"
+			},{
 				"name": "variable",
-				"match": "\\b(^|@|([A-Za-z_]+))\\b"
+				"match": "\\b(^|@|([A-Za-z][A-Za-z0-9_]*))\\b"
+			}]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control",
+				"match": "\\b(if|then|else|match|with)\\b"
 			}]
 		},
 		"comments": {
@@ -51,5 +58,5 @@
 			"end": "\\n"
 		}
 	},
-	"scopeName": "source.sep"
+	"scopeName": "source.scl"
 }
