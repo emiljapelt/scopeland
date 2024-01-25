@@ -90,7 +90,12 @@ call:
 
 pattern:
   simple_pattern { $1 }
-  | pattern AND simple_pattern { ScopePat($1,$3) }
+  | pattern AND simple_pattern { ScopeList($1,$3) }
+;
+
+tuple_pattern:
+  pattern { [$1] }
+  | pattern COMMA tuple_pattern { $1::$3 }
 ;
 
 simple_pattern:
@@ -99,6 +104,7 @@ simple_pattern:
   | LBRAKE RBRAKE { Empty }
   | UNDERSCORE { Any }
   | LPAR pattern RPAR { $2 }
+  | LBRAKE tuple_pattern RBRAKE { ScopeTuple $2 }
 ;
 
 match_alt:

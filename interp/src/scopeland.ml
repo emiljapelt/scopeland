@@ -157,9 +157,19 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     let rec do_match v (pat,res) = match v, pat with
       | Value(i,_), Concrete(ci) -> if i = ci then Some([None,v],res) else None
       | ScopeVal(InnerScope([],_),_), Empty -> Some([None,v],res)
-      | ScopeVal(InnerScope((_,h)::t,a),b), ScopePat(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a),b)) (tp,res) with
+      | ScopeVal(InnerScope((_,h)::t,a),b), ScopeList(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a),b)) (tp,res) with
         | Some(h_binds,_),Some(t_binds,_) -> Some(t_binds@h_binds,res)
         | _ -> None
+      )
+      | ScopeVal(InnerScope(vals,_),_), ScopeTuple(pats) -> (
+        if List.length vals != List.length pats then None
+        else (
+          let matches = List.map2 (fun (_,v) p -> do_match v (p,res)) vals pats in
+          if List.mem None matches then None
+          else let bindings = List.map Option.get matches |> List.map fst |> List.flatten in Some(bindings, res)
+          (*if List.for_all Option.is_some meme then Some(_,res)
+          else None*)
+        )
       )
       | _, Name n -> Some([Some n,v],res)
       | _, Any -> Some([None,v],res)

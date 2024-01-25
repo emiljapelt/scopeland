@@ -12,7 +12,8 @@ type expression =
 and pattern =
     | Concrete of int
     | Name of string
-    | ScopePat of pattern * pattern
+    | ScopeList of pattern * pattern
+    | ScopeTuple of pattern list
     | Empty
     | Any 
 
