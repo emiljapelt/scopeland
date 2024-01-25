@@ -53,6 +53,7 @@ rule lex = parse
     |   '\\'          { LAMBDA }
     |   ':'           { COLON }
     |   "->"          { ARROW }
+    |   "=>"          { F_ARROW }
     |   '!'           { EXCLAIM }
     |   '_'           { UNDERSCORE }
     |   _             { raise (Failure(Some((Lexing.lexeme_start_p lexbuf).pos_fname), Some((Lexing.lexeme_start_p lexbuf).pos_lnum), ("Unknown token"))) }

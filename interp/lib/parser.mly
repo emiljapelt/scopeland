@@ -23,7 +23,7 @@
 %token COMMA DOT UP COLON EOF
 %token IF THEN ELSE MATCH WITH IMPORT 
 %token UNDERSCORE
-%token ARROW LAMBDA
+%token ARROW LAMBDA F_ARROW
 
 /*Low precedence*/
 %left EQ NEQ
@@ -62,7 +62,8 @@ simple_expression:
   CSTINT { Constant $1 }
   | route { Route $1 }
   | LBRAKE scope RBRAKE { Scope (List.rev $2) }
-  | LBRAKE LAMBDA args ARROW scope RBRAKE { Func($3, (List.rev $5)) }
+  | LBRAKE LAMBDA args COLON typ ARROW scope RBRAKE { Func($3, Some $5, (List.rev $7)) }
+  | LBRAKE LAMBDA args ARROW scope RBRAKE { Func($3, None,(List.rev $5)) }
   | IF expression THEN expression ELSE simple_expression { If($2, $4, $6) }
   | LPAR expression_with_match RPAR { $2 }
 ;
@@ -92,11 +93,13 @@ typ:
   | POLY { T_Poly $1 }
   | LPAR type_list RPAR { T_Scope($2,None, NullTypeScope) }
   | typ LPAR RPAR { T_Scope([], Some $1, NullTypeScope) }
+  | typ F_ARROW typ { T_Func($1, $3) }
+  | LPAR typ RPAR { $2 }
 ;
 
 type_list:
   typ { [$1] }
-  | typ COMMA type_list { $1::$3 }
+  | typ TIMES type_list { $1::$3 }
 ;
 
 

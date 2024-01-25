@@ -20,7 +20,7 @@ and expression =
     | Route of route
     | Binop of string * expression * expression
     | Scope of stmt list
-    | Func of (string * typ) list * stmt list
+    | Func of (string * typ) list * typ option * stmt list
     | If of expression * expression * expression
     | Call of expression * expression
     | Match of expression * (pattern * expression) list
@@ -75,7 +75,6 @@ let route_to_path route =
     in
     aux route ["."]
       
-
 let get_values_of_scope scope = match scope with
     | NullScope -> raise_failure "Value lookup in the Null scope"
     | InnerScope(vals,_) -> vals
@@ -139,7 +138,7 @@ and expression_string expr = match expr with
         ) stmts in
         "[" ^ (String.concat ", " content) ^ "]"
     ) 
-    | Func(args, stmts) -> (String.concat " " (List.map fst args)) ^ " -> " ^ expression_string (Scope stmts)
+    | Func(args, _, stmts) -> (String.concat " " (List.map fst args)) ^ " -> " ^ expression_string (Scope stmts)
     | If(cond,expr1,expr2) -> "if " ^ expression_string cond ^ " then " ^ expression_string expr1 ^ " else " ^ expression_string expr2
     | Call(func, expr) -> expression_string func ^ " " ^ expression_string expr
     | Match(expr, _) -> "match " ^ expression_string expr ^ " with"

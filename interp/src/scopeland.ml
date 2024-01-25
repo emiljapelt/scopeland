@@ -104,7 +104,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   | Scope exprs -> 
     let scp = interpret_scope exprs (InnerScope([], scope)) in
     (ScopeVal(scp, stmt_name_opt), scope)
-  | Func(args,body) -> (Closure(args, body, [], scope, stmt_name_opt), scope)
+  | Func(args,_,body) -> (Closure(args, body, [], scope, stmt_name_opt), scope)
   | Call(func,arg) -> ( 
     match interpret_expression stmt_name_opt func scope with
     | (Closure([(arg_n,arg_t)],body,bindings,def_scp,fun_n),_) -> ( 
@@ -162,10 +162,10 @@ and interpret_scope stmts scope : scope =
       )
       with _ -> raise_failure ("Could not import: '" ^ route_string rt ^ "' aka. " ^ path)
     )
-    | Named(n,Func(args,body)) -> ( 
+    | Named(n,Func(args,_,body)) -> ( 
       Some(Some n, Closure(args,body,[],rest_scope,Some n))
     )
-    | Anon(Func(args,body)) -> ( 
+    | Anon(Func(args,_,body)) -> ( 
       Some(None, Closure(args,body,[],rest_scope, None))
     )
     | Named(n,Scope(stmts)) -> ( 
