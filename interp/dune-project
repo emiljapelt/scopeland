@@ -17,7 +17,11 @@
  (name scopeland)
  (synopsis "A compiler for the Seplin langauges.")
  (description "A compiler for languages targeting the Seplin virtual machine.")
- (depends ocaml dune)
+ (depends 
+  (ocaml (>= 5.1.0)) 
+  (dune (>= 3.12.2))
+  (menhir (= 2.1))
+  )
  (tags
   (compiler)))
 
