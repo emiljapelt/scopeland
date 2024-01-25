@@ -3,20 +3,17 @@ open Exceptions
 type typ = 
   | T_Unit
   | T_Int
-  | T_Func of typ * return_type
+  | T_Poly of char
+  | T_Func of typ * typ
   | T_Scope of scope_tuple_type * scope_list_type * typ_scope
 
 and typ_scope = 
   | NullTypeScope
-  | InnerTypeScope of (string option * return_type) list * typ_scope
+  | InnerTypeScope of (string option * typ) list * typ_scope
 
-and return_type = 
-    | Dependant of (typ -> return_type)
-    | Independant of typ
+and scope_tuple_type = typ list
 
-and scope_tuple_type = return_type list
-
-and scope_list_type = return_type option
+and scope_list_type = typ option
 
 and expression =
     | Constant of int
@@ -56,14 +53,11 @@ and scope =
 and value =
     | Unit of string option
     | Value of int * string option
-    | Closure of (string * typ) list * (stmt list) * ((string * value) list) * scope * string option
+    | Closure of (string * typ) list * (stmt list) * ((string * typ * value) list) * scope * string option
     | ScopeVal of scope * string option
 
 and file = 
     | File of stmt
-
-let independant t = Independant t
-let dependant f = Dependant f
 
 let value_name v = match v with
     | Unit n -> n
@@ -92,20 +86,17 @@ let add_to_local_scope adds scope = match scope with
 
 let rec type_string typ = match typ with
   | T_Unit -> "unit"
+  | T_Poly c -> "'"^Char.escaped c
   | T_Int -> "int"
-  | T_Func(f, _) -> "("^type_string f^" -> ?" ^")"
+  | T_Func(f, r) -> "("^type_string f^" -> "^type_string r ^")"
   | T_Scope(tuple,list,_) -> (
-    let tuple_string = List.map return_type_string tuple |> String.concat "," in
+    let tuple_string = List.map type_string tuple |> String.concat "," in
     let list_string = match list with
-    | Some(t) -> "| "^return_type_string t^"[]"
+    | Some(t) -> "| "^type_string t^"[]"
     | None -> ""
     in
     "("^tuple_string^") "^list_string
   )
-
-and return_type_string rt = match rt with
-    | Independant t -> type_string t
-    | Dependant _ -> "?"
 
 let rec route_string route =
     match route with

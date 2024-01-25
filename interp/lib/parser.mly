@@ -15,6 +15,7 @@
 %}
 %token <int> CSTINT
 %token <string> NAME
+%token <char> POLY
 %token INT 
 %token LPAR RPAR LBRAKE RBRAKE
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
@@ -82,19 +83,21 @@ simple_expression:
 args:
   LPAR NAME COLON typ RPAR { [$2,$4] }
   | LPAR NAME COLON typ RPAR args { ($2,$4) :: $6 }
+  //NAME { [$1,T_Int] }
+  //| NAME args { ($1,T_Int) :: $2 }
 ;
 
 typ:
   INT { T_Int }
+  | POLY { T_Poly $1 }
   | LPAR type_list RPAR { T_Scope($2,None, NullTypeScope) }
-  | typ LPAR RPAR { T_Scope([], Some(Independant $1), NullTypeScope) }
+  | typ LPAR RPAR { T_Scope([], Some $1, NullTypeScope) }
 ;
 
 type_list:
-  typ { [Independant $1] }
-  | typ COMMA type_list { (Independant $1)::$3 }
+  typ { [$1] }
+  | typ COMMA type_list { $1::$3 }
 ;
-
 
 
 call:

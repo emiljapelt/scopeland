@@ -107,17 +107,17 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   | Func(args,body) -> (Closure(args, body, [], scope, stmt_name_opt), scope)
   | Call(func,arg) -> ( 
     match interpret_expression stmt_name_opt func scope with
-    | (Closure([(arg_n,_)],body,bindings,def_scp,fun_n),_) -> ( 
+    | (Closure([(arg_n,arg_t)],body,bindings,def_scp,fun_n),_) -> ( 
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
-      let bindings = (arg_n,arg_val)::bindings in
-      let func_c = Closure(List.map fst bindings |> List.rev,body,[],def_scp,fun_n) in
-      match interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp)) with
+      let bindings = (arg_n,arg_t,arg_val)::bindings in
+      let func_c = Closure(List.rev_map (fun (a,b,_) -> (a,b)) bindings,body,[],def_scp,fun_n) in
+      match interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,_,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp)) with
       | InnerScope((_,result)::_,_) -> (result, scope)
       | _ -> raise_failure "No result from function call"
     )
-    | (Closure((arg_n,_)::rest,body,bindings,def_scp,fun_n),_) -> ( 
+    | (Closure((arg_n,arg_t)::rest,body,bindings,def_scp,fun_n),_) -> ( 
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
-      (Closure(rest,body,(arg_n, arg_val)::bindings,def_scp,fun_n), scope)
+      (Closure(rest,body,(arg_n,arg_t,arg_val)::bindings,def_scp,fun_n), scope)
     )
     | (v,_) -> raise_failure ("Call to non-callable: " ^ expression_string func ^ " -> " ^ value_string v)
   )
@@ -215,4 +215,4 @@ let () =
     | (v,_) -> Printf.printf "%s\n" (value_string v)
   with 
   | Failure(_,_,exp) -> Printf.printf "Failure: %s\n" exp
-  | _ -> Printf.printf "Unknown error (likely a parser error)\n"
+  | e -> raise e (*Printf.printf "Unknown error (likely a parser error)\n"*)
