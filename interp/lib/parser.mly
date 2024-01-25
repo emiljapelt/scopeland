@@ -15,6 +15,7 @@
 %}
 %token <int> CSTINT
 %token <string> NAME
+%token INT 
 %token LPAR RPAR LBRAKE RBRAKE
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
 %token PIPE AND EXCLAIM AT
@@ -79,9 +80,22 @@ simple_expression:
 ;
 
 args:
-  NAME { [$1] }
-  | NAME args { $1 :: $2 }
+  LPAR NAME COLON typ RPAR { [$2,$4] }
+  | LPAR NAME COLON typ RPAR args { ($2,$4) :: $6 }
 ;
+
+typ:
+  INT { T_Int }
+  | LPAR type_list RPAR { T_Scope($2,None, NullTypeScope) }
+  | typ LPAR RPAR { T_Scope([], Some(Independant $1), NullTypeScope) }
+;
+
+type_list:
+  typ { [Independant $1] }
+  | typ COMMA type_list { (Independant $1)::$3 }
+;
+
+
 
 call:
   simple_expression simple_expression { [$1;$2] }

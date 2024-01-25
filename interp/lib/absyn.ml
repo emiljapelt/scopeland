@@ -1,10 +1,29 @@
+open Exceptions
 
-type expression =
+type typ = 
+  | T_Unit
+  | T_Int
+  | T_Func of typ * return_type
+  | T_Scope of scope_tuple_type * scope_list_type * typ_scope
+
+and typ_scope = 
+  | NullTypeScope
+  | InnerTypeScope of (string option * return_type) list * typ_scope
+
+and return_type = 
+    | Dependant of (typ -> return_type)
+    | Independant of typ
+
+and scope_tuple_type = return_type list
+
+and scope_list_type = return_type option
+
+and expression =
     | Constant of int
     | Route of route
     | Binop of string * expression * expression
     | Scope of stmt list
-    | Func of string list * stmt list
+    | Func of (string * typ) list * stmt list
     | If of expression * expression * expression
     | Call of expression * expression
     | Match of expression * (pattern * expression) list
@@ -35,17 +54,58 @@ and scope =
     | InnerScope of (string option * value) list * scope
 
 and value =
+    | Unit of string option
     | Value of int * string option
-    | Closure of (string list) * (stmt list) * ((string * value) list) * scope * string option
+    | Closure of (string * typ) list * (stmt list) * ((string * value) list) * scope * string option
     | ScopeVal of scope * string option
 
 and file = 
     | File of stmt
 
+let independant t = Independant t
+let dependant f = Dependant f
+
 let value_name v = match v with
+    | Unit n -> n
     | Value(_,n)
     | Closure(_,_,_,_,n)
     | ScopeVal(_,n) -> n
+
+let route_to_path route =
+    let rec aux rt acc = match rt with
+        | [] -> (String.concat "/" (List.rev acc))^".scl"
+        | Label n :: t -> aux t (n::acc)
+        | OutOf :: t -> aux t (".."::acc)
+        | FullOut :: t -> aux t ["/"]
+        | Index _ :: _ -> raise_failure "Indexing for imports is not supported"
+    in
+    aux route ["."]
+      
+
+let get_values_of_scope scope = match scope with
+    | NullScope -> raise_failure "Value lookup in the Null scope"
+    | InnerScope(vals,_) -> vals
+
+let add_to_local_scope adds scope = match scope with
+    | NullScope -> raise_failure "Scope lookup in the Null scope"
+    | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
+
+let rec type_string typ = match typ with
+  | T_Unit -> "unit"
+  | T_Int -> "int"
+  | T_Func(f, _) -> "("^type_string f^" -> ?" ^")"
+  | T_Scope(tuple,list,_) -> (
+    let tuple_string = List.map return_type_string tuple |> String.concat "," in
+    let list_string = match list with
+    | Some(t) -> "| "^return_type_string t^"[]"
+    | None -> ""
+    in
+    "("^tuple_string^") "^list_string
+  )
+
+and return_type_string rt = match rt with
+    | Independant t -> type_string t
+    | Dependant _ -> "?"
 
 let rec route_string route =
     match route with
@@ -64,10 +124,12 @@ let rec route_string route =
     )
 
 and value_string value = match value with
+    | Unit(Some n) -> n ^ ": ()"
+    | Unit None -> "()"
     | Value(i,Some n) -> n ^ ": " ^ string_of_int i
     | Value(i,None) -> string_of_int i
-    | Closure(args_n,body,_,_,Some n) -> n ^ ": " ^ String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
-    | Closure(args_n,body,_,_,None) -> String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
+    | Closure(args_n,body,_,_,Some n) -> n ^ ": " ^ String.concat " " (List.map fst args_n) ^ " -> " ^ expression_string (Scope body)
+    | Closure(args_n,body,_,_,None) -> String.concat " " (List.map fst args_n) ^ " -> " ^ expression_string (Scope body)
     | ScopeVal(NullScope,_) -> "null scope"
     | ScopeVal(InnerScope(vals,_),_) -> (
         let content = List.map (fun (_,v) -> value_string v) (List.rev vals) in
@@ -86,7 +148,9 @@ and expression_string expr = match expr with
         ) stmts in
         "[" ^ (String.concat ", " content) ^ "]"
     ) 
-    | Func(args, stmts) -> (String.concat " " args) ^ " -> " ^ expression_string (Scope stmts)
+    | Func(args, stmts) -> (String.concat " " (List.map fst args)) ^ " -> " ^ expression_string (Scope stmts)
     | If(cond,expr1,expr2) -> "if " ^ expression_string cond ^ " then " ^ expression_string expr1 ^ " else " ^ expression_string expr2
     | Call(func, expr) -> expression_string func ^ " " ^ expression_string expr
     | Match(expr, _) -> "match " ^ expression_string expr ^ " with"
+
+

@@ -4,6 +4,7 @@
  (name scopelandlib)
  (modules
    exceptions
+   typing
    absyn
    lexer
    parser

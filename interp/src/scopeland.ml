@@ -1,6 +1,7 @@
 open Str
 open Scopelandlib.Exceptions
 open Scopelandlib.Absyn
+open Scopelandlib.Typing
 
 let () = Printexc.record_backtrace true
 
@@ -13,82 +14,54 @@ let resolve_input () =
   ) with
   | Invalid_argument _ -> raise_failure "No file given to compile"
   | ex -> raise ex
-
-let route_to_path route =
-  let rec aux rt acc = match rt with
-    | [] -> (String.concat "/" (List.rev acc))^".scl"
-    | Label n :: t -> aux t (n::acc)
-    | OutOf :: t -> aux t (".."::acc)
-    | FullOut :: t -> aux t ["/"]
-    | Index _ :: _ -> raise_failure "Indexing for imports is not supported"
-  in
-  aux route ["."]
-
+  
 let read_file path =
   let file = open_in path in
   let content = really_input_string (file) (in_channel_length file) in
   let () = close_in_noerr file in
   content
 
-  let read_input input = 
-    Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input))
-
-let get_values_of_scope scope = match scope with
-  | NullScope -> raise_failure "Value lookup in the Null scope"
-  | InnerScope(vals,_) -> vals
-
-let add_to_local_scope adds scope = match scope with
-  | NullScope -> raise_failure "Scope lookup in the Null scope"
-  | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
+let read_input input = 
+  Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input))
 
 let rec route_lookup route scope lscope =
   let scope_vals = get_values_of_scope lscope in
   match route with
   | [] -> raise_failure "Empty route"
-  | Label(ln)::t -> (
-    let lookup = List.find_map (fun v -> match v with
-      | (Some n,v) -> if n = ln then Some(v) else None
-      | _ -> None
-    ) scope_vals
-    in 
-    if t = [] then lookup
-    else match lookup with
-    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
-    | _ -> None 
-  )
-  | Index(e)::t -> ( 
-    let lookup = match interpret_expression None e scope with
-    | (Value(i,_),_) -> ( 
-      let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
-      match List.nth_opt scope_vals (abs i) with
-      | Some(_,v) -> Some(v)
-      | None -> None
+  | h::t -> ( 
+    let lookup = ( match h with
+      | Label(ln) -> (
+        List.find_map (fun v -> match v with
+          | (Some n,v) -> if n = ln then Some(v) else None
+          | _ -> None
+        ) scope_vals
+      )
+      | Index(e) -> ( 
+        match interpret_expression None e scope with
+        | (Value(i,_),_) -> ( 
+          let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
+          match List.nth_opt scope_vals (abs i) with
+          | Some(_,v) -> Some(v)
+          | None -> None
+        )
+        | (v,_) -> raise_failure ("Indexing with non-constant value: " ^ value_string v)
+      )
+      | OutOf-> ( 
+        match lscope with 
+        | InnerScope (_,NullScope)
+        | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
+        | InnerScope (_,scp) -> Some(ScopeVal(scp,None)) 
+      )
+      | FullOut -> (
+        let rec aux scp = match scp with
+          | NullScope -> raise_failure "FullOut: Hit the Null scope"
+          | InnerScope(_, NullScope) -> Some(ScopeVal(scp,None))
+          | InnerScope(_, scp) -> aux scp
+        in
+        aux lscope
+      )
     )
-    | (v,_) -> raise_failure ("Indexing with non-constant value: " ^ value_string v)
     in
-    if t = [] then lookup
-    else match lookup with
-    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
-    | _ -> None 
-  )
-  | OutOf::t -> ( 
-    let lookup = match lscope with 
-    | InnerScope (_,NullScope)
-    | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
-    | InnerScope (_,scp) -> Some(ScopeVal(scp,None)) 
-    in
-    if t = [] then lookup
-    else match lookup with
-    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
-    | _ -> None 
-  )
-  | FullOut::t -> (
-    let rec aux scp = match scp with
-      | NullScope -> raise_failure "FullOut: Hit the Null scope"
-      | InnerScope(_, NullScope) -> Some(ScopeVal(scp,None))
-      | InnerScope(_, scp) -> aux scp
-    in
-    let lookup = aux lscope in
     if t = [] then lookup
     else match lookup with
     | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
@@ -134,7 +107,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   | Func(args,body) -> (Closure(args, body, [], scope, stmt_name_opt), scope)
   | Call(func,arg) -> ( 
     match interpret_expression stmt_name_opt func scope with
-    | (Closure([arg_n],body,bindings,def_scp,fun_n),_) -> ( 
+    | (Closure([(arg_n,_)],body,bindings,def_scp,fun_n),_) -> ( 
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
       let bindings = (arg_n,arg_val)::bindings in
       let func_c = Closure(List.map fst bindings |> List.rev,body,[],def_scp,fun_n) in
@@ -142,7 +115,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
       | InnerScope((_,result)::_,_) -> (result, scope)
       | _ -> raise_failure "No result from function call"
     )
-    | (Closure(arg_n::rest,body,bindings,def_scp,fun_n),_) -> ( 
+    | (Closure((arg_n,_)::rest,body,bindings,def_scp,fun_n),_) -> ( 
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
       (Closure(rest,body,(arg_n, arg_val)::bindings,def_scp,fun_n), scope)
     )
@@ -218,7 +191,11 @@ and interpret_scope stmts scope : scope =
 and interpret_statement stmt scope : (value * scope) = match stmt with
   | Named(name,expr) -> interpret_expression (Some name) expr scope
   | Anon expr -> interpret_expression None expr scope
-  | Out _ -> raise_failure "Printing outside scope"
+  | Out expr -> (
+    let (v,_) = interpret_expression None expr scope in
+    Printf.printf "%s\n" (value_string v); 
+    (Unit None, scope)
+  )
   | Import rt -> (
     let path = route_to_path rt in 
       try (
@@ -228,7 +205,7 @@ and interpret_statement stmt scope : (value * scope) = match stmt with
       with _ -> raise_failure ("Could not import: '" ^ route_string rt ^ "' aka. " ^ path)
   )
 
-and interpret file = match file with File(stmt) -> interpret_statement stmt NullScope
+and interpret file = match file with File(stmt) -> Printf.printf "type: %s\n" (type_stmt stmt NullTypeScope |> type_string) ; interpret_statement stmt NullScope
 
 let () =
   try 

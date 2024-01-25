@@ -7,8 +7,9 @@ authors: ["Emil Jäpelt"]
 license: "LICENSE"
 tags: ["compiler"]
 depends: [
-  "ocaml"
-  "dune" {>= "3.7"}
+  "ocaml" {>= "5.1.0"}
+  "dune" {>= "3.7" & >= "3.12.2"}
+  "menhir" {= "2.1"}
   "odoc" {with-doc}
 ]
 build: [
