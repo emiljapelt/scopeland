@@ -40,7 +40,7 @@ This is the way to access other defined statements in the program. There are a h
 | Syntax | Explaination |
 |---|---|
 | _name_ | Lookup the value of a named statement, in the current scope. |
-| [_expr_] | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. [-1] referes to the last statement. |
+| [:_expr_] | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. [:-1] referes to the last statement. |
 | ^ | Goes to the containing scope, or crashes if there is no containing scope. | 
 | @ | Goes to the outermost scope |
 
@@ -48,7 +48,7 @@ Here are a few syntax examples, we go in further details in [Routing](#routing).
 ```
 my_name
 ^.other_name
-^.^.[-1].[0]
+^.^.[:-1].[:0]
 ```
 
 ### Binary Operation
@@ -113,7 +113,7 @@ fib 10,
 
 ### Match
 
-Useful for reasoning about the value of an expression, and evaluating some other expression depending on the result. Currently patterns can be any integer, or the wildcard '_'.
+Useful for reasoning about the value, or shape, of an expression, and evaluating some other expression depending on the result. 
 
 Patterns:
 | Pattern | Example | Explaination |
@@ -123,6 +123,7 @@ Patterns:
 | _int_ | 1 | Matches a specific integer |
 | [] | [] | Matches the empty scope |
 | _p1_ & _p2_ | t&h | Matches the scope where the last element matches _p2_ and the rest matches _p1_ |
+| [_p1_, ..., _pn_] | [x, 2] | Matches a scope of _n_ elemements, where the _i_'th element matches the _i_'th pattern.
 
 Examples:
 ```
