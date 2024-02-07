@@ -45,50 +45,37 @@ let rec route_lookup route scope lscope =
   let scope_vals = get_values_of_scope lscope in
   match route with
   | [] -> raise_failure "Empty route"
-  | Label(ln)::t -> (
-    let lookup = List.find_map (fun v -> match v with
-      | (Some n,v) -> if n = ln then Some(v) else None
-      | _ -> None
-    ) scope_vals
-    in 
-    if t = [] then lookup
-    else match lookup with
-    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
-    | _ -> None 
-  )
-  | Index(e)::t -> ( 
-    let lookup = match interpret_expression None e scope with
-    | (Value(i,_),_) -> ( 
-      let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
-      match List.nth_opt scope_vals (abs i) with
-      | Some(_,v) -> Some(v)
-      | None -> None
+  | h::t -> ( let lookup = match h with
+    | Label(ln) -> (
+      List.find_map (fun v -> match v with
+        | (Some n,v) -> if n = ln then Some(v) else None
+        | _ -> None
+      ) scope_vals
     )
-    | (v,_) -> raise_failure ("Indexing with non-constant value: " ^ value_string v)
+    | Index(e) -> ( 
+      match interpret_expression None e scope with
+      | (Value(i,_),_) -> ( 
+        let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
+        match List.nth_opt scope_vals (abs i) with
+        | Some(_,v) -> Some(v)
+        | None -> None
+      )
+      | (v,_) -> raise_failure ("Indexing with non-constant value: " ^ value_string v)
+    )
+    | OutOf -> ( 
+      match lscope with 
+      | InnerScope (_,NullScope)
+      | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
+      | InnerScope (_,scp) -> Some(ScopeVal(scp,None)) 
+    )
+    | FullOut -> (
+      let rec aux scp = match scp with
+        | NullScope -> raise_failure "FullOut: Hit the Null scope"
+        | InnerScope(_, NullScope) -> Some(ScopeVal(scp,None))
+        | InnerScope(_, scp) -> aux scp
+      in aux lscope
+    )
     in
-    if t = [] then lookup
-    else match lookup with
-    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
-    | _ -> None 
-  )
-  | OutOf::t -> ( 
-    let lookup = match lscope with 
-    | InnerScope (_,NullScope)
-    | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
-    | InnerScope (_,scp) -> Some(ScopeVal(scp,None)) 
-    in
-    if t = [] then lookup
-    else match lookup with
-    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
-    | _ -> None 
-  )
-  | FullOut::t -> (
-    let rec aux scp = match scp with
-      | NullScope -> raise_failure "FullOut: Hit the Null scope"
-      | InnerScope(_, NullScope) -> Some(ScopeVal(scp,None))
-      | InnerScope(_, scp) -> aux scp
-    in
-    let lookup = aux lscope in
     if t = [] then lookup
     else match lookup with
     | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
