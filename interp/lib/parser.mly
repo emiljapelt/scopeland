@@ -1,16 +1,6 @@
 %{
   open Absyn
-  open Exceptions
   (*open Lexing*)
-
-  let expr_list_to_call exprs =
-    let rec aux es acc = match es with
-      | [] -> acc
-      | h::t -> aux t (Call(acc, h)) 
-    in 
-    match exprs with
-    | e1::e2::t -> aux t (Call(e1,e2))
-    | _ -> raise_failure "Call of bad format"
 
 %}
 %token <int> CSTINT
@@ -51,7 +41,7 @@ expression_with_match:
 ;
 
 expression:
-  call { expr_list_to_call $1 }
+  call { $1 }
   | simple_expression { $1 }
   | expression binop expression { Binop($2, $1, $3) }
 ;
@@ -84,8 +74,8 @@ args:
 ;
 
 call:
-  simple_expression simple_expression { [$1;$2] }
-  | simple_expression call { $1 :: $2 }
+  simple_expression simple_expression { Call($1,$2) }
+  | call simple_expression { Call($1,$2) }
 ;
 
 pattern:
