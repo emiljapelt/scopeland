@@ -2,3 +2,4 @@ _build
 scopeland
 *.scl
 !std.scl
+!examples/*.scl
