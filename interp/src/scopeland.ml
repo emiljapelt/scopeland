@@ -30,16 +30,21 @@ let read_file path =
   let () = close_in_noerr file in
   content
 
-  let read_input input = 
-    Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input))
+let read_input input = 
+  Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input))
 
 let get_values_of_scope scope = match scope with
   | NullScope -> raise_failure "Value lookup in the Null scope"
-  | InnerScope(vals,_) -> vals
+  | InnerScope(vals,_,_) -> vals
+
+let global_scope scp = match scp with
+  | NullScope -> NullScope
+  | InnerScope(_,_,NullScope) -> scp
+  | InnerScope(_,_,g_scp) -> g_scp
 
 let add_to_local_scope adds scope = match scope with
   | NullScope -> raise_failure "Scope lookup in the Null scope"
-  | InnerScope(vals,scp) -> InnerScope(adds @ vals,scp)
+  | InnerScope(vals,scp,g_scp) -> InnerScope(adds @ vals,scp,g_scp)
 
 let rec route_lookup route scope lscope =
   let scope_vals = get_values_of_scope lscope in
@@ -64,16 +69,14 @@ let rec route_lookup route scope lscope =
     )
     | OutOf -> ( 
       match lscope with 
-      | InnerScope (_,NullScope)
+      | InnerScope (_,NullScope,_)
       | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
-      | InnerScope (_,scp) -> Some(ScopeVal(scp,None)) 
+      | InnerScope (_,scp,_) -> Some(ScopeVal(scp,None)) 
     )
-    | FullOut -> (
-      let rec aux scp = match scp with
-        | NullScope -> raise_failure "FullOut: Hit the Null scope"
-        | InnerScope(_, NullScope) -> Some(ScopeVal(scp,None))
-        | InnerScope(_, scp) -> aux scp
-      in aux lscope
+    | FullOut -> (  match lscope with
+      | NullScope -> raise_failure "FullOut: Hit the Null scope"
+      | InnerScope(_, NullScope,_) -> Some(ScopeVal(lscope,None))
+      | InnerScope(_, _, g_scp) -> Some(ScopeVal(g_scp,None))
     )
     in
     if t = [] then lookup
@@ -91,12 +94,12 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   )
   | Binop ("=",Scope [], expr)
   | Binop ("=",expr, Scope []) -> ( match interpret_expression None expr scope with
-    | (ScopeVal(InnerScope([],_),_),_) -> (Value(1, stmt_name_opt), scope)
+    | (ScopeVal(InnerScope([],_,_),_),_) -> (Value(1, stmt_name_opt), scope)
     | _ -> (Value(0, stmt_name_opt), scope)
   )
   | Binop ("!=",Scope [], expr)
   | Binop ("!=",expr, Scope []) -> ( match interpret_expression None expr scope with
-    | (ScopeVal(InnerScope([],_),_),_) -> (Value(0, stmt_name_opt), scope)
+    | (ScopeVal(InnerScope([],_,_),_),_) -> (Value(0, stmt_name_opt), scope)
     | _ -> (Value(1, stmt_name_opt), scope)
   )
   | Binop (op,expr1,expr2) -> (
@@ -116,7 +119,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
   | Scope exprs -> 
-    let scp = interpret_scope exprs (InnerScope([], scope)) in
+    let scp = interpret_scope exprs (InnerScope([], scope, global_scope scope)) in
     (ScopeVal(scp, stmt_name_opt), scope)
   | Func(args,body) -> (Closure(args, body, [], scope, stmt_name_opt), scope)
   | Call(func,arg) -> ( 
@@ -125,8 +128,8 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
       let bindings = (arg_n,arg_val)::bindings in
       let func_c = Closure(List.map fst bindings |> List.rev,body,[],def_scp,fun_n) in
-      match interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp)) with
-      | InnerScope((_,result)::_,_) -> (result, scope)
+      match interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp, global_scope def_scp)) with
+      | InnerScope((_,result)::_,_,_) -> (result, scope)
       | _ -> raise_failure "No result from function call"
     )
     | (Closure(arg_n::rest,body,bindings,def_scp,fun_n),_) -> ( 
@@ -143,12 +146,12 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     let (value, _) = interpret_expression stmt_name_opt expr scope in
     let rec do_match v (pat,res) = match v, pat with
       | Value(i,_), Concrete(ci) -> if i = ci then Some([None,v],res) else None
-      | ScopeVal(InnerScope([],_),_), Empty -> Some([None,v],res)
-      | ScopeVal(InnerScope((_,h)::t,a),b), ScopeList(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a),b)) (tp,res) with
+      | ScopeVal(InnerScope([],_,_),_), Empty -> Some([None,v],res)
+      | ScopeVal(InnerScope((_,h)::t,a,b),c), ScopeList(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a,b),c)) (tp,res) with
         | Some(h_binds,_),Some(t_binds,_) -> Some(t_binds@h_binds,res)
         | _ -> None
       )
-      | ScopeVal(InnerScope(vals,_),_), ScopeTuple(pats) -> (
+      | ScopeVal(InnerScope(vals,_,_),_), ScopeTuple(pats) -> (
         if List.length vals != List.length pats then None
         else (
           let matches = List.map2 (fun (_,v) p -> do_match v (p,res)) vals pats in
@@ -193,11 +196,11 @@ and interpret_scope stmts scope : scope =
       Some(None, Closure(args,body,[],rest_scope, None))
     )
     | Named(n,Scope(stmts)) -> ( 
-      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope)) in
+      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope, if global_scope rest_scope = NullScope then rest_scope else global_scope rest_scope)) in
       Some(Some n,ScopeVal(inner_scope,Some n))
     )
     | Anon(Scope(stmts)) -> ( 
-      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope)) in
+      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope, if global_scope rest_scope = NullScope then rest_scope else global_scope rest_scope)) in
       Some(None, ScopeVal(inner_scope,None))
     )
     | Named(n,_) -> ( 
@@ -231,7 +234,7 @@ let () =
   try 
     let absyn = read_input (resolve_input ()) in
     match interpret absyn with
-    | (ScopeVal(InnerScope((_,v)::_,_),_),_) (* If program is a scope, only print the last value *)
+    | (ScopeVal(InnerScope((_,v)::_,_,_),_),_) (* If program is a scope, only print the last value *)
     | (v,_) -> Printf.printf "%s\n" (value_string v)
   with 
   | Failure(_,_,exp) -> Printf.printf "Failure: %s\n" exp

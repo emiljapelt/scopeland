@@ -24,7 +24,6 @@
         -1: l n
     ],
 
-
     tape_length: 10,
     tape: make_tape tape_length,
     index: 0,

@@ -33,7 +33,7 @@ and route = step list
 
 and scope = 
     | NullScope
-    | InnerScope of (string option * value) list * scope
+    | InnerScope of (string option * value) list * scope * scope
 
 and value =
     | Value of int * string option
@@ -70,7 +70,7 @@ and value_string value = match value with
     | Closure(args_n,body,_,_,Some n) -> n ^ ": " ^ String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
     | Closure(args_n,body,_,_,None) -> String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
     | ScopeVal(NullScope,_) -> "null scope"
-    | ScopeVal(InnerScope(vals,_),_) -> (
+    | ScopeVal(InnerScope(vals,_,_),_) -> (
         let content = List.map (fun (_,v) -> value_string v) (List.rev vals) in
         "[" ^ (String.concat ", " content) ^ "]"
     )
