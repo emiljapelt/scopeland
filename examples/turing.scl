@@ -40,8 +40,8 @@
         ns: ^.next_state (^.get_nth index tape) state,
         ni: ^.next_index (^.get_nth index nt) index,
         if ni >= ^.tape_length then nt
-        else (if ni < 0 then nt
-        else ^.-1 nt ns ni)
+        else if ni < 0 then nt
+        else ^.-1 nt ns ni
     ],
     run tape state index,
 ]

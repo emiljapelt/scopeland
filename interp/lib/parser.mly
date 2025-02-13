@@ -19,6 +19,7 @@
 %left AND
 %left PLUS MINUS
 %left TIMES 
+%right ELSE
 /*High precedence*/
 
 %start main
@@ -42,17 +43,45 @@ expression_with_match:
 
 expression:
   call { $1 }
-  | simple_expression { $1 }
+  | simple_expression_and_route { $1 }
   | expression binop expression { Binop($2, $1, $3) }
+  | IF expression THEN expression ELSE expression { If($2, $4, $6) }
+;
+
+simple_expression_and_route:
+  | route { Route $1 }
+  | simple_expression { $1 }
 ;
 
 simple_expression:
-  CSTINT { Constant $1 }
-  | route { Route $1 }
+  | CSTINT { Constant $1 }
   | LBRAKE scope RBRAKE { Scope (List.rev $2) }
   | LBRAKE LAMBDA args ARROW scope RBRAKE { Func($3, (List.rev $5)) }
-  | IF expression THEN expression ELSE simple_expression { If($2, $4, $6) }
   | LPAR expression_with_match RPAR { $2 }
+;
+
+scope:
+  { [] }
+  | stmt { [$1] }
+  | stmt COMMA scope { $1::$3 }
+;
+
+route:
+  | NAME route_inner { Label $1 :: $2}
+  | simple_expression COLON route_inner { Index $1 :: $3}
+  | UP route_inner { OutOf :: $2 }
+  | AT route_inner { FullOut :: $2 }
+;
+
+route_inner:
+  | step* { $1 }
+;
+
+step: 
+  | DOT NAME { Label $2 }
+  | DOT simple_expression { Index $2 }
+  | DOT UP { OutOf }
+  | DOT AT { FullOut }
 ;
 
 %inline binop:
@@ -74,8 +103,8 @@ args:
 ;
 
 call:
-  simple_expression simple_expression { Call($1,$2) }
-  | call simple_expression { Call($1,$2) }
+  simple_expression_and_route simple_expression_and_route { Call($1,$2) }
+  | call simple_expression_and_route { Call($1,$2) }
 ;
 
 pattern:
@@ -105,28 +134,3 @@ match_alts:
   | match_alt { [$1] }
   | match_alt match_alts { $1 :: $2 }
 ;
-
-route:
-  | NAME route_inner { Label $1 :: $2}
-  | CSTINT COLON route_inner { Index (Constant $1) :: $3}
-  | UP route_inner { OutOf :: $2 }
-  | AT route_inner { FullOut :: $2 }
-;
-
-route_inner:
-  | step* { $1 }
-;
-
-step: 
-  | DOT NAME { Label $2 }
-  | DOT CSTINT { Index (Constant $2) }
-  | DOT UP { OutOf }
-  | DOT AT { FullOut }
-;
-
-scope:
-  { [] }
-  | stmt { [$1] }
-  | stmt COMMA scope { $1::$3 }
-;
-

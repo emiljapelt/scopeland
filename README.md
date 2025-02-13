@@ -37,10 +37,11 @@ An integer which might be negative.
 ### Route
 
 This is the way to access other defined statements in the program. There are a handful of elements that can be part of a route, called steps, which are chained together with '.' (a dot).
+
 | Syntax | Explaination |
 |---|---|
 | _name_ | Lookup the value of a named statement, in the current scope. |
-| [:_expr_] | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. [:-1] referes to the last statement. |
+| _expr_ | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. index -1 referes to the last statement. When starting a route with an expression, it must be postfix with ':'. |
 | ^ | Goes to the containing scope, or crashes if there is no containing scope. | 
 | @ | Goes to the outermost scope |
 
@@ -48,7 +49,8 @@ Here are a few syntax examples, we go in further details in [Routing](#routing).
 ```
 my_name
 ^.other_name
-^.^.[:-1].[:0]
+^.^.-1.0
+1:.var_name
 ```
 
 ### Binary Operation
