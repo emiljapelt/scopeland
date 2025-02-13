@@ -2,16 +2,16 @@ std: [
     rev: [\l ->  
         [\l acc -> match l with
             | [] -> acc
-            | t&h -> ^.[:-1] t (acc&h)
+            | t&h -> ^.-1 t (acc&h)
         ],
-        [:-1] l []
+        -1: l []
     ],
     map: [\l f -> 
         [\l acc -> match l with
             | [] -> @.rev acc
-            | t&h -> ^.[:-1] t (acc&(^.f h))
+            | t&h -> ^.-1 t (acc&(^.f h))
         ],
-        [:-1] l []
+        -1: l []
     ],
     not: [\n -> n = 0],
     abs: [\n -> if n < 0 then (0 - n) else n],

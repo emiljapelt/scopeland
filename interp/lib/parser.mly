@@ -89,7 +89,7 @@ tuple_pattern:
 ;
 
 simple_pattern:
-  CSTINT { Concrete $1 }
+  | CSTINT { Concrete $1 }
   | NAME { Name $1 }
   | LBRAKE RBRAKE { Empty }
   | UNDERSCORE { Any }
@@ -102,20 +102,26 @@ match_alt:
 ;
 
 match_alts:
-  match_alt { [$1] }
+  | match_alt { [$1] }
   | match_alt match_alts { $1 :: $2 }
 ;
 
 route:
-  | step { [$1] }
-  | step DOT route { $1 :: $3 }
+  | NAME route_inner { Label $1 :: $2}
+  | CSTINT COLON route_inner { Index (Constant $1) :: $3}
+  | UP route_inner { OutOf :: $2 }
+  | AT route_inner { FullOut :: $2 }
+;
+
+route_inner:
+  | step* { $1 }
 ;
 
 step: 
-  NAME { Label $1 }
-  | LBRAKE COLON expression RBRAKE { Index $3 }
-  | UP { OutOf }
-  | AT { FullOut }
+  | DOT NAME { Label $2 }
+  | DOT CSTINT { Index (Constant $2) }
+  | DOT UP { OutOf }
+  | DOT AT { FullOut }
 ;
 
 scope:
