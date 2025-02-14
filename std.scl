@@ -6,12 +6,19 @@ std: [
         ],
         -1: l []
     ],
-    map: [\l f -> 
+    map: [\f l -> 
         [\l acc -> match l with
             | [] -> @.rev acc
             | t&h -> ^.-1 t (acc&(^.f h))
         ],
         -1: l []
+    ],
+    mapi: [\f l -> 
+        [\l idx acc -> match l with
+            | [] -> @.rev acc
+            | t&h -> ^.-1 t (idx+1) (acc&(^.f h idx))
+        ],
+        -1: l 0 []
     ],
     len: [\s ->
         [\s c -> match s with
@@ -19,6 +26,48 @@ std: [
             | t&_ -> ^.-1 t (c+1)
         ],
         -1: s 0
+    ],
+    filter: [\p s ->
+        [\s acc -> match s with
+            | [] -> acc
+            | t&h -> ^.-1 t (if ^.p h then acc&h else acc)
+        ],
+        -1: s []
+    ],
+    sum: [\s ->
+        [\s c -> match s with
+            | [] -> c
+            | t&int -> ^.-1 t (c+s.-1)
+            | t&_ -> ^.-1 t c
+        ],
+        -1: s 0
+    ],
+    concat: [\s ->
+        [\s c -> match s with
+            | [] -> c
+            | t&h -> ^.-1 t (c+h)
+        ],
+        -1: s ""
+    ],
+    is_int: [\v -> match v with
+        | int -> 1
+        | _ -> 0
+    ],
+    is_string: [\v -> match v with
+        | string -> 1
+        | _ -> 0
+    ],
+    is_scope: [\v -> match v with
+        | [] -> 1
+        | _&_ -> 1
+        | _ -> 0
+    ],
+    is_func: [\v -> match v with
+        | [] -> 0
+        | _&_ -> 0
+        | int -> 0
+        | string -> 0
+        | _ -> 1
     ],
     not: [\n -> n = 0],
     abs: [\n -> if n < 0 then (0 - n) else n],
