@@ -29,15 +29,15 @@
     index: 0,
     state: [0,1],
 
-    logic: [\n s -> s.0],
-    next_state: [\n s -> [^.s.1, ^.s.0 + ^.s.1]],
-    next_index: [\n i -> i + 1],
+    logic: [\s n -> s.0],
+    next_state: [\s n -> [^.s.1, ^.s.0 + ^.s.1]],
+    next_index: [\i n -> i + 1],
 
     run: [\tape state index -> 
         !tape,
-        nt: ^.set_nth index tape (^.logic (^.get_nth index tape) state),
-        ns: ^.next_state (^.get_nth index tape) state,
-        ni: ^.next_index (^.get_nth index nt) index,
+        nt: tape |> ^.get_nth index |> ^.logic state |> ^.set_nth index tape,
+        ns: tape |> ^.get_nth index |> ^.next_state state,
+        ni: nt |> ^.get_nth index |> ^.next_index index,
         if ni >= ^.tape_length then nt
         else if ni < 0 then nt
         else ^.-1 nt ns ni

@@ -49,6 +49,7 @@ rule lex = parse
     |   '^'           { UP }
     |   '@'           { AT }
     |   '.'           { DOT }
+    |   "|>"          { INTO }
     |   '|'           { PIPE }
     |   '&'           { AND }
     |   '\\'          { LAMBDA }

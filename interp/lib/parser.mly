@@ -11,7 +11,7 @@
 %token PIPE AND EXCLAIM AT
 %token COMMA DOT UP COLON EOF
 %token IF THEN ELSE MATCH WITH IMPORT STRING INT
-%token UNDERSCORE
+%token UNDERSCORE INTO
 %token ARROW LAMBDA
 
 /*Low precedence*/
@@ -20,7 +20,8 @@
 %left AND
 %left PLUS MINUS
 %left TIMES 
-%right ELSE
+%right ELSE 
+%left INTO
 /*High precedence*/
 
 %start main
@@ -48,6 +49,7 @@ expression:
   | simple_expression_and_route { $1 }
   | expression binop expression { Binop($2, $1, $3) }
   | IF expression THEN expression ELSE expression { If($2, $4, $6) }
+  | expression INTO expression  { Call ($3,$1) }
 ;
 
 simple_expression_and_route:
