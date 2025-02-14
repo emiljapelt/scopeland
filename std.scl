@@ -13,7 +13,18 @@ std: [
         ],
         -1: l []
     ],
+    len: [\s ->
+        [\s c -> match s with
+            | [] -> c
+            | t&_ -> ^.-1 t (c+1)
+        ],
+        -1: s 0
+    ],
     not: [\n -> n = 0],
     abs: [\n -> if n < 0 then (0 - n) else n],
-    sqr: [\n -> n * n]
+    sqr: [\n -> n * n],
+    val: 420,
+    lol: [
+       f: [\n -> @.val]
+    ],
 ]

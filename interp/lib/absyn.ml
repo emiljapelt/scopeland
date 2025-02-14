@@ -1,6 +1,7 @@
 
 type expression =
-    | Constant of int
+    | Integer of int
+    | String of string
     | Route of route
     | Binop of string * expression * expression
     | Scope of stmt list
@@ -10,7 +11,10 @@ type expression =
     | Match of expression * (pattern * expression) list
 
 and pattern =
-    | Concrete of int
+    | IntegerPat of int
+    | StringPat of string
+    | IntegerTypePat
+    | StringTypePat
     | Name of string
     | ScopeList of pattern * pattern
     | ScopeTuple of pattern list
@@ -36,7 +40,8 @@ and scope =
     | InnerScope of (string option * value) list * scope * scope
 
 and value =
-    | Value of int * string option
+    | IntegerVal of int * string option
+    | StringVal of string * string option
     | Closure of (string list) * (stmt list) * ((string * value) list) * scope * string option
     | ScopeVal of scope * string option
 
@@ -44,9 +49,16 @@ and file =
     | File of stmt
 
 let value_name v = match v with
-    | Value(_,n)
+    | IntegerVal(_,n)
+    | StringVal(_,n)
     | Closure(_,_,_,_,n)
     | ScopeVal(_,n) -> n
+
+and remove_name value = match value with
+    | IntegerVal(i,_) -> IntegerVal(i,None)
+    | StringVal(s,_) -> StringVal(s,None)
+    | Closure(a,b,c,d,_) -> Closure(a,b,c,d,None)
+    | ScopeVal(scp,_) -> ScopeVal(scp,None)
 
 let rec route_string route =
     match route with
@@ -65,18 +77,22 @@ let rec route_string route =
     )
 
 and value_string value = match value with
-    | Value(i,Some n) -> n ^ ": " ^ string_of_int i
-    | Value(i,None) -> string_of_int i
+    | IntegerVal(i,Some n) -> n ^ ": " ^ string_of_int i
+    | IntegerVal(i,None) -> string_of_int i
+    | StringVal(s,Some n) -> n ^ ": " ^ s
+    | StringVal(s,None) -> s
     | Closure(args_n,body,_,_,Some n) -> n ^ ": " ^ String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
     | Closure(args_n,body,_,_,None) -> String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
     | ScopeVal(NullScope,_) -> "null scope"
     | ScopeVal(InnerScope(vals,_,_),_) -> (
-        let content = List.map (fun (_,v) -> value_string v) (List.rev vals) in
+        let content = List.map (fun (_,v) -> value_string v) vals(*List.rev vals*) in
         "[" ^ (String.concat ", " content) ^ "]"
     )
 
+
 and expression_string expr = match expr with
-    | Constant i -> string_of_int i
+    | Integer i -> string_of_int i
+    | String s -> "\"" ^ s ^ "\""
     | Route rt -> route_string rt
     | Binop(op, expr1, expr2) -> "(" ^ expression_string expr1 ^ " " ^ op ^ " " ^ expression_string expr2 ^ ")"
     | Scope(stmts) -> (

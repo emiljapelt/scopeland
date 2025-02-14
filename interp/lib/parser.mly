@@ -4,12 +4,13 @@
 
 %}
 %token <int> CSTINT
+%token <string> CSTSTR
 %token <string> NAME
 %token LPAR RPAR LBRAKE RBRAKE
 %token PLUS MINUS TIMES EQ NEQ LT GT LTEQ GTEQ
 %token PIPE AND EXCLAIM AT
 %token COMMA DOT UP COLON EOF
-%token IF THEN ELSE MATCH WITH IMPORT 
+%token IF THEN ELSE MATCH WITH IMPORT STRING INT
 %token UNDERSCORE
 %token ARROW LAMBDA
 
@@ -27,6 +28,7 @@
 %%
 main:
   stmt EOF     { File $1 }
+  | stmt COMMA scope EOF  { File (Anon(Scope(List.rev($1::$3)))) }
 ;
 
 stmt:
@@ -54,7 +56,8 @@ simple_expression_and_route:
 ;
 
 simple_expression:
-  | CSTINT { Constant $1 }
+  | CSTINT { Integer $1 }
+  | CSTSTR { String $1 }
   | LBRAKE scope RBRAKE { Scope (List.rev $2) }
   | LBRAKE LAMBDA args ARROW scope RBRAKE { Func($3, (List.rev $5)) }
   | LPAR expression_with_match RPAR { $2 }
@@ -118,7 +121,10 @@ tuple_pattern:
 ;
 
 simple_pattern:
-  | CSTINT { Concrete $1 }
+  | CSTINT { IntegerPat $1 }
+  | CSTSTR { StringPat $1 }
+  | INT { IntegerTypePat }
+  | STRING { StringTypePat }
   | NAME { Name $1 }
   | LBRAKE RBRAKE { Empty }
   | UNDERSCORE { Any }

@@ -34,7 +34,7 @@ let read_input input =
   Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input))
 
 let get_values_of_scope scope = match scope with
-  | NullScope -> raise_failure "Value lookup in the Null scope"
+  | NullScope -> raise_failure "IntegerVal lookup in the Null scope"
   | InnerScope(vals,_,_) -> vals
 
 let global_scope scp = match scp with
@@ -59,7 +59,7 @@ let rec route_lookup route scope lscope =
     )
     | Index(e) -> ( 
       match interpret_expression None e scope with
-      | (Value(i,_),_) -> ( 
+      | (IntegerVal(i,_),_) -> ( 
         let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
         match List.nth_opt scope_vals (abs i) with
         | Some(_,v) -> Some(v)
@@ -87,34 +87,38 @@ let rec route_lookup route scope lscope =
 
 and interpret_expression stmt_name_opt expr scope : (value * scope) = 
   match expr with
-  | Constant i -> (Value(i,stmt_name_opt), scope)
+  | Integer i -> (IntegerVal(i,stmt_name_opt), scope)
+  | String s -> (StringVal(s,stmt_name_opt), scope)
   | Route(rt) -> ( match route_lookup rt scope scope with
     | Some(v) -> (v, scope)
     | None -> raise_failure ("Unknown label: " ^ route_string rt)
   )
   | Binop ("=",Scope [], expr)
   | Binop ("=",expr, Scope []) -> ( match interpret_expression None expr scope with
-    | (ScopeVal(InnerScope([],_,_),_),_) -> (Value(1, stmt_name_opt), scope)
-    | _ -> (Value(0, stmt_name_opt), scope)
+    | (ScopeVal(InnerScope([],_,_),_),_) -> (IntegerVal(1, stmt_name_opt), scope)
+    | _ -> (IntegerVal(0, stmt_name_opt), scope)
   )
   | Binop ("!=",Scope [], expr)
   | Binop ("!=",expr, Scope []) -> ( match interpret_expression None expr scope with
-    | (ScopeVal(InnerScope([],_,_),_),_) -> (Value(0, stmt_name_opt), scope)
-    | _ -> (Value(1, stmt_name_opt), scope)
+    | (ScopeVal(InnerScope([],_,_),_),_) -> (IntegerVal(0, stmt_name_opt), scope)
+    | _ -> (IntegerVal(1, stmt_name_opt), scope)
   )
   | Binop (op,expr1,expr2) -> (
     let (val1,_) = interpret_expression None expr1 scope in
     let (val2,_) = interpret_expression None expr2 scope in
     match val1, val2, op with 
-    | Value(x,_),Value(y,_),"+" -> (Value(x + y, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),"-" -> (Value(x - y, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),"*" -> (Value(x * y, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),"=" -> if x = y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),"!=" -> if not(x = y) then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),"<" -> if x < y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),">" -> if x > y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),"<=" -> if x <= y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
-    | Value(x,_),Value(y,_),">=" -> if x >= y then (Value(1, stmt_name_opt), scope) else (Value(0, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),"+" -> (IntegerVal(x + y, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),"-" -> (IntegerVal(x - y, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),"*" -> (IntegerVal(x * y, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),"=" -> if x = y then (IntegerVal(1, stmt_name_opt), scope) else (IntegerVal(0, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),"!=" -> if not(x = y) then (IntegerVal(1, stmt_name_opt), scope) else (IntegerVal(0, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),"<" -> if x < y then (IntegerVal(1, stmt_name_opt), scope) else (IntegerVal(0, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),">" -> if x > y then (IntegerVal(1, stmt_name_opt), scope) else (IntegerVal(0, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),"<=" -> if x <= y then (IntegerVal(1, stmt_name_opt), scope) else (IntegerVal(0, stmt_name_opt), scope)
+    | IntegerVal(x,_),IntegerVal(y,_),">=" -> if x >= y then (IntegerVal(1, stmt_name_opt), scope) else (IntegerVal(0, stmt_name_opt), scope)
+    | StringVal(x,_),StringVal(y,_),"+" -> (StringVal(x^y,None), scope)
+    | StringVal(s,_),a,"+" -> (StringVal(s^(a |> remove_name |> value_string),None), scope)
+    | a,StringVal(s,_),"+" -> (StringVal((a |> remove_name |> value_string)^s,None), scope)
     | ScopeVal(scope,_), _, "&" -> (ScopeVal(add_to_local_scope [value_name val2, val2] scope,None), scope)
     | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
@@ -139,13 +143,16 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | (v,_) -> raise_failure ("Call to non-callable: " ^ expression_string func ^ " -> " ^ value_string v)
   )
   | If(cond,expr1,expr2) -> (match interpret_expression stmt_name_opt cond scope with
-    | (Value(0,_),_) -> interpret_expression stmt_name_opt expr2 scope
+    | (IntegerVal(0,_),_) -> interpret_expression stmt_name_opt expr2 scope
     | _ -> interpret_expression stmt_name_opt expr1 scope
   )
   | Match(expr, alts) -> (
     let (value, _) = interpret_expression stmt_name_opt expr scope in
     let rec do_match v (pat,res) = match v, pat with
-      | Value(i,_), Concrete(ci) -> if i = ci then Some([None,v],res) else None
+      | IntegerVal(i,_), IntegerPat(ci) -> if i = ci then Some([None,v],res) else None
+      | StringVal(s,_), StringPat(sp) -> if s = sp then Some([None,v],res) else None
+      | IntegerVal _, IntegerTypePat -> Some([None,v],res)
+      | StringVal _, StringTypePat -> Some([None,v],res)
       | ScopeVal(InnerScope([],_,_),_), Empty -> Some([None,v],res)
       | ScopeVal(InnerScope((_,h)::t,a,b),c), ScopeList(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a,b),c)) (tp,res) with
         | Some(h_binds,_),Some(t_binds,_) -> Some(t_binds@h_binds,res)

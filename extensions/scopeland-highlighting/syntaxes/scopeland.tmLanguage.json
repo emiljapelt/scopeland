@@ -37,6 +37,10 @@
 		},
 		"exprs": {
 			"patterns": [{
+				"name": "string.quoted.double",
+				"begin": "\"",
+				"end": "\""
+			},{
 				"name": "constant.numeric",
 				"match": "\\b(-?[0-9]+)\\b"
 			},{
@@ -50,12 +54,15 @@
 			"patterns": [{
 				"name": "keyword.control",
 				"match": "\\b(if|then|else|match|with)\\b"
+			},{
+				"name": "support.type",
+				"match": "\\b(int|string)\\b"
 			}]
 		},
 		"comments": {
 			"name": "comment.line",
 			"begin": "//",
-			"end": "\\n"
+			"end": "\n"
 		}
 	},
 	"scopeName": "source.scl"
