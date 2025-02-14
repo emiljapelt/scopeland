@@ -36,8 +36,8 @@ and step =
 and route = step list
 
 and scope = 
-    | NullScope
-    | InnerScope of (string option * value) list * scope * scope
+    | NullScope of string
+    | InnerScope of (string option * value) list * scope * scope * string
 
 and value =
     | IntegerVal of int * string option
@@ -59,6 +59,13 @@ and remove_name value = match value with
     | StringVal(s,_) -> StringVal(s,None)
     | Closure(a,b,c,d,_) -> Closure(a,b,c,d,None)
     | ScopeVal(scp,_) -> ScopeVal(scp,None)
+
+and scope_dir scope = match scope with
+    | NullScope dir 
+    | InnerScope(_,_,_,dir) -> dir
+
+let is_null_scope scope = match scope with
+    | NullScope _ -> true | _ -> false
 
 let rec route_string route =
     match route with
@@ -83,8 +90,8 @@ and value_string value = match value with
     | StringVal(s,None) -> s
     | Closure(args_n,body,_,_,Some n) -> n ^ ": " ^ String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
     | Closure(args_n,body,_,_,None) -> String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
-    | ScopeVal(NullScope,_) -> "null scope"
-    | ScopeVal(InnerScope(vals,_,_),_) -> (
+    | ScopeVal(NullScope _,_) -> "null scope"
+    | ScopeVal(InnerScope(vals,_,_,_),_) -> (
         let content = List.map (fun (_,v) -> value_string v) vals(*List.rev vals*) in
         "[" ^ (String.concat ", " content) ^ "]"
     )

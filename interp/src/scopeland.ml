@@ -1,4 +1,3 @@
-open Str
 open Scopelandlib.Exceptions
 open Scopelandlib.Absyn
 
@@ -6,15 +5,16 @@ let () = Printexc.record_backtrace true
 
 let resolve_input () =
   try (
-    let input = Sys.argv.(1) in
-    if not (Sys.file_exists input) then (Printf.printf "%s\n" input; raise_failure "Input file does not exist")
-    else if Str.string_match (regexp {|^\(\.\.?\)?\/\(\([a-zA-Z0-9_-]+\|\(\.\.?\)\)\/\)*[a-zA-Z0-9_-]+\.scl$|}) input 0 then input
-    else raise_failure "Invalid input file extension"
+    if Array.length Sys.argv < 1 then raise_failure "No file given to compile"
+    else let input = Sys.argv.(1) in
+    if not(String.ends_with ~suffix:".scl" input) then raise_failure "Invalid input file extension"
+    else if not (Sys.file_exists input) then (Printf.printf "%s\n" input; raise_failure "Input file does not exist")
+    else input
   ) with
   | Invalid_argument _ -> raise_failure "No file given to compile"
   | ex -> raise ex
 
-let route_to_path route =
+let route_to_path start route =
   let rec aux rt acc = match rt with
     | [] -> (String.concat "/" (List.rev acc))^".scl"
     | Label n :: t -> aux t (n::acc)
@@ -22,7 +22,7 @@ let route_to_path route =
     | FullOut :: t -> aux t ["/"]
     | Index _ :: _ -> raise_failure "Indexing for imports is not supported"
   in
-  aux route ["."]
+  aux route [start]
 
 let read_file path =
   let file = open_in path in
@@ -34,17 +34,17 @@ let read_input input =
   Scopelandlib.Parser.main (Scopelandlib.Lexer.start input) (Lexing.from_string (read_file input))
 
 let get_values_of_scope scope = match scope with
-  | NullScope -> raise_failure "IntegerVal lookup in the Null scope"
-  | InnerScope(vals,_,_) -> vals
+  | NullScope _ -> raise_failure "IntegerVal lookup in the Null scope"
+  | InnerScope(vals,_,_,_) -> vals
 
 let global_scope scp = match scp with
-  | NullScope -> NullScope
-  | InnerScope(_,_,NullScope) -> scp
-  | InnerScope(_,_,g_scp) -> g_scp
+  | NullScope dir -> NullScope dir
+  | InnerScope(_,_,NullScope _,_) -> scp
+  | InnerScope(_,_,g_scp,_) -> g_scp
 
 let add_to_local_scope adds scope = match scope with
-  | NullScope -> raise_failure "Scope lookup in the Null scope"
-  | InnerScope(vals,scp,g_scp) -> InnerScope(adds @ vals,scp,g_scp)
+  | NullScope _ -> raise_failure "Scope lookup in the Null scope"
+  | InnerScope(vals,scp,g_scp,dir) -> InnerScope(adds @ vals,scp,g_scp,dir)
 
 let rec route_lookup route scope lscope =
   let scope_vals = get_values_of_scope lscope in
@@ -69,14 +69,14 @@ let rec route_lookup route scope lscope =
     )
     | OutOf -> ( 
       match lscope with 
-      | InnerScope (_,NullScope,_)
-      | NullScope -> raise_failure "OutOf: Attempt to escape the Null scope"
-      | InnerScope (_,scp,_) -> Some(ScopeVal(scp,None)) 
+      | InnerScope (_,NullScope _,_,_)
+      | NullScope _ -> raise_failure "OutOf: Attempt to escape the Null scope"
+      | InnerScope (_,scp,_,_) -> Some(ScopeVal(scp,None)) 
     )
     | FullOut -> (  match lscope with
-      | NullScope -> raise_failure "FullOut: Hit the Null scope"
-      | InnerScope(_, NullScope,_) -> Some(ScopeVal(lscope,None))
-      | InnerScope(_, _, g_scp) -> Some(ScopeVal(g_scp,None))
+      | NullScope _ -> raise_failure "FullOut: Hit the Null scope"
+      | InnerScope(_,NullScope _,_,_) -> Some(ScopeVal(lscope,None))
+      | InnerScope(_,_,g_scp,_) -> Some(ScopeVal(g_scp,None))
     )
     in
     if t = [] then lookup
@@ -95,12 +95,12 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
   )
   | Binop ("=",Scope [], expr)
   | Binop ("=",expr, Scope []) -> ( match interpret_expression None expr scope with
-    | (ScopeVal(InnerScope([],_,_),_),_) -> (IntegerVal(1, stmt_name_opt), scope)
+    | (ScopeVal(InnerScope([],_,_,_),_),_) -> (IntegerVal(1, stmt_name_opt), scope)
     | _ -> (IntegerVal(0, stmt_name_opt), scope)
   )
   | Binop ("!=",Scope [], expr)
   | Binop ("!=",expr, Scope []) -> ( match interpret_expression None expr scope with
-    | (ScopeVal(InnerScope([],_,_),_),_) -> (IntegerVal(0, stmt_name_opt), scope)
+    | (ScopeVal(InnerScope([],_,_,_),_),_) -> (IntegerVal(0, stmt_name_opt), scope)
     | _ -> (IntegerVal(1, stmt_name_opt), scope)
   )
   | Binop (op,expr1,expr2) -> (
@@ -123,7 +123,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
     | _ -> raise_failure ("Unknown binary operation: (" ^ value_string val1 ^" "^ op ^" "^ value_string val2 ^ ")")
   )
   | Scope exprs -> 
-    let scp = interpret_scope exprs (InnerScope([], scope, global_scope scope)) in
+    let scp = interpret_scope exprs (InnerScope([], scope, global_scope scope, scope_dir scope)) in
     (ScopeVal(scp, stmt_name_opt), scope)
   | Func(args,body) -> (Closure(args, body, [], scope, stmt_name_opt), scope)
   | Call(func,arg) -> ( 
@@ -132,8 +132,8 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
       let bindings = (arg_n,arg_val)::bindings in
       let func_c = Closure(List.map fst bindings |> List.rev,body,[],def_scp,fun_n) in
-      match interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp, global_scope def_scp)) with
-      | InnerScope((_,result)::_,_,_) -> (result, scope)
+      match interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp, global_scope def_scp, scope_dir def_scp)) with
+      | InnerScope((_,result)::_,_,_,_) -> (result, scope)
       | _ -> raise_failure "No result from function call"
     )
     | (Closure(arg_n::rest,body,bindings,def_scp,fun_n),_) -> ( 
@@ -153,12 +153,12 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
       | StringVal(s,_), StringPat(sp) -> if s = sp then Some([None,v],res) else None
       | IntegerVal _, IntegerTypePat -> Some([None,v],res)
       | StringVal _, StringTypePat -> Some([None,v],res)
-      | ScopeVal(InnerScope([],_,_),_), Empty -> Some([None,v],res)
-      | ScopeVal(InnerScope((_,h)::t,a,b),c), ScopeList(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a,b),c)) (tp,res) with
+      | ScopeVal(InnerScope([],_,_,_),_), Empty -> Some([None,v],res)
+      | ScopeVal(InnerScope((_,h)::t,a,b,dir),c), ScopeList(tp,hp) -> ( match do_match h (hp,res), do_match (ScopeVal(InnerScope(t,a,b,dir),c)) (tp,res) with
         | Some(h_binds,_),Some(t_binds,_) -> Some(t_binds@h_binds,res)
         | _ -> None
       )
-      | ScopeVal(InnerScope(vals,_,_),_), ScopeTuple(pats) -> (
+      | ScopeVal(InnerScope(vals,_,_,_),_), ScopeTuple(pats) -> (
         if List.length vals != List.length pats then None
         else (
           let matches = List.map2 (fun (_,v) p -> do_match v (p,res)) vals pats in
@@ -189,10 +189,10 @@ and interpret_scope stmts scope : scope =
       None
     )
     | Import rt -> (
-      let path = route_to_path rt in 
+      let path = route_to_path (scope_dir scope) rt in 
       try (
         match read_input path with
-        | File stmt -> let (v,_) = interpret_statement stmt NullScope in Some(value_name v, v) 
+        | File stmt -> let (v,_) = interpret_statement stmt (NullScope path) in Some(value_name v, v) 
       )
       with _ -> raise_failure ("Could not import: '" ^ route_string rt ^ "' aka. " ^ path)
     )
@@ -203,11 +203,11 @@ and interpret_scope stmts scope : scope =
       Some(None, Closure(args,body,[],rest_scope, None))
     )
     | Named(n,Scope(stmts)) -> ( 
-      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope, if global_scope rest_scope = NullScope then rest_scope else global_scope rest_scope)) in
+      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope, (if global_scope rest_scope |> is_null_scope then rest_scope else global_scope rest_scope), scope_dir scope)) in
       Some(Some n,ScopeVal(inner_scope,Some n))
     )
     | Anon(Scope(stmts)) -> ( 
-      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope, if global_scope rest_scope = NullScope then rest_scope else global_scope rest_scope)) in
+      let inner_scope = interpret_scope stmts (InnerScope([], rest_scope, (if global_scope rest_scope |> is_null_scope then rest_scope else global_scope rest_scope), scope_dir scope)) in
       Some(None, ScopeVal(inner_scope,None))
     )
     | Named(n,_) -> ( 
@@ -227,21 +227,26 @@ and interpret_statement stmt scope : (value * scope) = match stmt with
   | Anon expr -> interpret_expression None expr scope
   | Out _ -> raise_failure "Printing outside scope"
   | Import rt -> (
-    let path = route_to_path rt in 
-      try (
-        match read_input path with
-        | File stmt -> interpret_statement stmt NullScope
-      )
-      with _ -> raise_failure ("Could not import: '" ^ route_string rt ^ "' aka. " ^ path)
+    let path = route_to_path (scope_dir scope) rt in 
+    try (
+      match read_input path with
+      | File stmt -> interpret_statement stmt (NullScope path)
+    )
+    with _ -> raise_failure ("Could not import: '" ^ route_string rt ^ "' aka. " ^ path)
   )
 
-and interpret file = match file with File(stmt) -> interpret_statement stmt NullScope
+and interpret (File stmt) path = interpret_statement stmt (NullScope path)
 
 let () =
   try 
-    let absyn = read_input (resolve_input ()) in
-    match interpret absyn with
-    | (ScopeVal(InnerScope((_,v)::_,_,_),_),_) (* If program is a scope, only print the last value *)
+    let path = resolve_input () in
+    let dir = Sys.getcwd () ^ "/" ^ match String.rindex_opt path '/' with 
+      | None -> ""
+      | Some i -> String.sub path 0 i
+    in
+    let absyn = read_input path in
+    match interpret absyn dir with
+    | (ScopeVal(InnerScope((_,v)::_,_,_,_),_),_) (* If program is a scope, only print the last value *)
     | (v,_) -> Printf.printf "%s\n" (value_string v)
   with 
   | Failure(_,_,exp) -> Printf.printf "Failure: %s\n" exp
