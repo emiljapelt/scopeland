@@ -46,53 +46,51 @@ let add_to_local_scope adds scope = match scope with
   | NullScope _ -> raise_failure "Scope lookup in the Null scope"
   | InnerScope(vals,scp,g_scp,dir) -> InnerScope(adds @ vals,scp,g_scp,dir)
 
-let rec route_lookup route scope lscope =
-  let scope_vals = get_values_of_scope lscope in
-  match route with
-  | [] -> raise_failure "Empty route"
-  | h::t -> ( let lookup = match h with
-    | Label(ln) -> (
-      List.find_map (fun v -> match v with
-        | (Some n,v) -> if n = ln then Some(v) else None
-        | _ -> None
-      ) scope_vals
-    )
-    | Index(e) -> ( 
-      match interpret_expression None e scope with
-      | (IntegerVal(i,_),_) -> ( 
-        let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
-        match List.nth_opt scope_vals (abs i) with
-        | Some(_,v) -> Some(v)
-        | None -> None
+let rec route_lookup route scope =
+  let rec aux route result = 
+    match route with
+    | [] -> result
+    | h :: t -> ( match result with
+      | ScopeVal(scp,_) -> ( match h with
+        | Label l -> (
+          let scope_vals = get_values_of_scope scp in
+          let lookup = List.find_opt (fun v -> match v with
+            | (Some n, _) -> n = l
+            | _ -> false
+          ) scope_vals in
+          match lookup with
+          | Some(_,v) -> aux t v
+          | None -> raise_failure ("No such name in scope: "^l)
+        )
+        | Index e -> (
+          match interpret_expression None e scope with
+          | (IntegerVal(i,_),_) -> (
+            let scope_vals = get_values_of_scope scp in
+            let (i,scope_vals) = if i >= 0 then (i, List.rev scope_vals) else ((abs i)-1, scope_vals) in
+            match List.nth_opt scope_vals (abs i) with
+            | Some(_,v) -> aux t v
+            | None -> raise_failure "Index out of bounds"
+          )
+          | (v,_) -> raise_failure ("Indexing with non-integer value: " ^ value_string v)
+        )
+        | OutOf -> (
+          match scp with
+          | InnerScope(_,NullScope _,_,_)
+          | NullScope _ -> raise_failure "OutOf: Attempt to escape the Null scope"
+          | InnerScope(_,scp,_,_) -> aux t (ScopeVal(scp,None))
+        )
+        | FullOut -> aux t (ScopeVal(global_scope scp,None))
       )
-      | (v,_) -> raise_failure ("Indexing with non-constant value: " ^ value_string v)
+      | _ -> raise_failure "Routing into a non-scope value"
     )
-    | OutOf -> ( 
-      match lscope with 
-      | InnerScope (_,NullScope _,_,_)
-      | NullScope _ -> raise_failure "OutOf: Attempt to escape the Null scope"
-      | InnerScope (_,scp,_,_) -> Some(ScopeVal(scp,None)) 
-    )
-    | FullOut -> (  match lscope with
-      | NullScope _ -> raise_failure "FullOut: Hit the Null scope"
-      | InnerScope(_,NullScope _,_,_) -> Some(ScopeVal(lscope,None))
-      | InnerScope(_,_,g_scp,_) -> Some(ScopeVal(g_scp,None))
-    )
-    in
-    if t = [] then lookup
-    else match lookup with
-    | Some(ScopeVal(scp,_)) -> route_lookup t scope scp
-    | _ -> None 
-  )
+  in
+  aux route (ScopeVal(scope,None))
 
 and interpret_expression stmt_name_opt expr scope : (value * scope) = 
   match expr with
   | Integer i -> (IntegerVal(i,stmt_name_opt), scope)
   | String s -> (StringVal(s,stmt_name_opt), scope)
-  | Route(rt) -> ( match route_lookup rt scope scope with
-    | Some(v) -> (v, scope)
-    | None -> raise_failure ("Unknown label: " ^ route_string rt)
-  )
+  | Route(rt) -> (route_lookup rt scope, scope)
   | Binop ("=",Scope [], expr)
   | Binop ("=",expr, Scope []) -> ( match interpret_expression None expr scope with
     | (ScopeVal(InnerScope([],_,_,_),_),_) -> (IntegerVal(1, stmt_name_opt), scope)
@@ -132,7 +130,7 @@ and interpret_expression stmt_name_opt expr scope : (value * scope) =
       let (arg_val,_) = interpret_expression stmt_name_opt arg scope in
       let bindings = (arg_n,arg_val)::bindings in
       let func_c = Closure(List.map fst bindings |> List.rev,body,[],def_scp,fun_n) in
-      match interpret_scope body (InnerScope((Some arg_n,arg_val)::(List.map (fun (n,v) -> (Some n, v)) bindings), add_to_local_scope [(fun_n, func_c)] def_scp, global_scope def_scp, scope_dir def_scp)) with
+      match interpret_scope body (InnerScope(List.map (fun (n,v) -> (Some n, v)) bindings, add_to_local_scope [(fun_n, func_c)] def_scp, global_scope def_scp, scope_dir def_scp)) with
       | InnerScope((_,result)::_,_,_,_) -> (result, scope)
       | _ -> raise_failure "No result from function call"
     )

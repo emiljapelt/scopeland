@@ -92,7 +92,7 @@ and value_string value = match value with
     | Closure(args_n,body,_,_,None) -> String.concat " " args_n ^ " -> " ^ expression_string (Scope body)
     | ScopeVal(NullScope _,_) -> "null scope"
     | ScopeVal(InnerScope(vals,_,_,_),_) -> (
-        let content = List.map (fun (_,v) -> value_string v) vals(*List.rev vals*) in
+        let content = List.map (fun (_,v) -> value_string v) (List.rev vals) in
         "[" ^ (String.concat ", " content) ^ "]"
     )
 

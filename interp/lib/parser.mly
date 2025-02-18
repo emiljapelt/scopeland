@@ -36,7 +36,7 @@ stmt:
     expression_with_match { Anon $1 }
   | NAME COLON expression_with_match { Named($1, $3) }
   | EXCLAIM expression_with_match { Out $2 }
-  | IMPORT route { Import $2 }
+  | IMPORT dot_start_route { Import $2 }
 ;
 
 expression_with_match:
@@ -46,10 +46,11 @@ expression_with_match:
 
 expression:
   call { $1 }
-  | simple_expression_and_route { $1 }
+  | simple_expression { $1 }
   | expression binop expression { Binop($2, $1, $3) }
   | IF expression THEN expression ELSE expression { If($2, $4, $6) }
   | expression INTO expression  { Call ($3,$1) }
+  | dot_start_route { Route $1 }
 ;
 
 simple_expression_and_route:
@@ -71,22 +72,33 @@ scope:
   | stmt COMMA scope { $1::$3 }
 ;
 
+dot_start_route:
+  | DOT route_inner_no_dot { $2 }
+  | route { $1 }
+;
+
 route:
-  | NAME route_inner { Label $1 :: $2}
-  | simple_expression COLON route_inner { Index $1 :: $3}
+  | NAME route_inner { Label $1 :: $2 }
+  | simple_expression COLON route_inner { Index $1 :: $3 }
   | UP route_inner { OutOf :: $2 }
   | AT route_inner { FullOut :: $2 }
 ;
 
+route_inner_no_dot:
+  | {[]}
+  | step route_inner { $1 :: $2 }
+;
+
 route_inner:
-  | step* { $1 }
+  | {[]}
+  | DOT step route_inner { $2 :: $3 }
 ;
 
 step: 
-  | DOT NAME { Label $2 }
-  | DOT simple_expression { Index $2 }
-  | DOT UP { OutOf }
-  | DOT AT { FullOut }
+  | NAME { Label $1 }
+  | simple_expression { Index $1 }
+  | UP { OutOf }
+  | AT { FullOut }
 ;
 
 %inline binop:
