@@ -79,7 +79,6 @@ dot_start_route:
 
 route:
   | NAME route_inner { Label $1 :: $2 }
-  | simple_expression COLON route_inner { Index $1 :: $3 }
   | UP route_inner { OutOf :: $2 }
   | AT route_inner { FullOut :: $2 }
 ;

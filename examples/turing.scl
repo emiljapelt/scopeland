@@ -7,21 +7,21 @@
             | 0 -> acc
             | _ -> ^.-1 (n - 1) (acc&0)
         ],
-        -1: n []
+        (.-1) n []
     ],
     set_nth: [\n l v -> 
         [\l n acc -> match l with
             | [] -> @.rev acc
             | t&h -> ^.-1 t (n - 1) (acc&(if n = 0 then ^.v else h))
         ],
-        -1: l n []
+        (.-1) l n []
     ],
     get_nth: [\n l -> 
         [\l n -> match l with
             | [] -> -1
             | t&h -> if n = 0 then h else (^.-1 t (n - 1))
         ],
-        -1: l n
+        (.-1) l n
     ],
 
     tape_length: 10,
