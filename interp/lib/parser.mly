@@ -40,7 +40,8 @@ stmt:
 ;
 
 expression_with_match:
-  MATCH expression WITH match_alts { Match($2, $4) }
+  | MATCH expression WITH match_alts { Match($2, $4) }
+  | MATCH expression WITH pattern ARROW expression { Match($2, [$4, $6]) }
   | expression { $1 }
 ;
 

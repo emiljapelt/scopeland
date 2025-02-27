@@ -1,53 +1,74 @@
 std: [
-    rev: [\l ->  
-        [\l acc -> match l with
-            | [] -> acc
-            | t&h -> ^.-1 t (acc&h)
+    list: [
+        rev: [\l ->  
+            [\l acc -> match l with
+                | [] -> acc
+                | t&h -> ^.-1 t (acc&h)
+            ],
+            _ l []
         ],
-        _ l []
+        map: [\f l -> 
+            [\l acc -> match l with
+                | [] -> @.rev acc
+                | t&h -> ^.-1 t (acc&(^.f h))
+            ],
+            _ l []
+        ],
+        mapi: [\f l -> 
+            [\l idx acc -> match l with
+                | [] -> @.rev acc
+                | t&h -> ^.-1 t (idx+1) (acc&(^.f h idx))
+            ],
+            _ l 0 []
+        ],
+        len: [\s ->
+            [\s c -> match s with
+                | [] -> c
+                | t&_ -> ^.-1 t (c+1)
+            ],
+            _ s 0
+        ],
+        filter: [\p s ->
+            [\s acc -> match s with
+                | [] -> acc
+                | t&h -> ^.-1 t (if ^.p h then acc&h else acc)
+            ],
+            _ s []
+        ],
+        sum: [\s ->
+            [\s c -> match s with
+                | [] -> c
+                | t&int -> ^.-1 t (c+s.-1)
+                | t&_ -> ^.-1 t c
+            ],
+            _ s 0
+        ],
+        concat: [\s ->
+            [\s c -> match s with
+                | [] -> c
+                | t&h -> ^.-1 t (c+h)
+            ],
+            _ s ""
+        ],
     ],
-    map: [\f l -> 
-        [\l acc -> match l with
-            | [] -> @.rev acc
-            | t&h -> ^.-1 t (acc&(^.f h))
+    option: [
+        get: [\opt -> match opt with [a] -> a],
+        get_or: [\def opt -> match opt with
+            | [a] -> a
+            | [] -> def
         ],
-        _ l []
-    ],
-    mapi: [\f l -> 
-        [\l idx acc -> match l with
-            | [] -> @.rev acc
-            | t&h -> ^.-1 t (idx+1) (acc&(^.f h idx))
+        is_none: [\opt -> match opt with 
+            | [] -> 1
+            | _ -> 0
         ],
-        _ l 0 []
-    ],
-    len: [\s ->
-        [\s c -> match s with
-            | [] -> c
-            | t&_ -> ^.-1 t (c+1)
+        is_some: [\opt -> match opt with
+            | [_] -> 1
+            | _ -> 0
         ],
-        _ s 0
-    ],
-    filter: [\p s ->
-        [\s acc -> match s with
-            | [] -> acc
-            | t&h -> ^.-1 t (if ^.p h then acc&h else acc)
-        ],
-        _ s []
-    ],
-    sum: [\s ->
-        [\s c -> match s with
-            | [] -> c
-            | t&int -> ^.-1 t (c+s.-1)
-            | t&_ -> ^.-1 t c
-        ],
-        _ s 0
-    ],
-    concat: [\s ->
-        [\s c -> match s with
-            | [] -> c
-            | t&h -> ^.-1 t (c+h)
-        ],
-        _ s ""
+        map: [\f opt -> match opt with
+            | [a] -> [^.f ^.a]
+            | [] -> []
+        ]
     ],
     is_int: [\v -> match v with
         | int -> 1
@@ -69,6 +90,9 @@ std: [
         | string -> 0
         | _ -> 1
     ],
+    fst: [\scp -> match scp with _&a -> a],
+    snd: [\scp -> match scp with _&_&a -> a],
+    last: [\scp -> scp.-1],
     not: [\n -> n = 0],
     abs: [\n -> if n < 0 then (0 - n) else n],
     sqr: [\n -> n * n],
