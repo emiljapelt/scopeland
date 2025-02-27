@@ -26,31 +26,43 @@ import ^.std,
 
 ## Expressions
 
-### Constant
+### Interger
 
-An integer which might be negative.
+An integer value, which might be negative.
 ```
 1337
 -9001
 ```
 
+### String
+
+A string value.
+```
+"Scopeland is weird"
+```
+
+
 ### Route
 
-This is the way to access other defined statements in the program. There are a handful of elements that can be part of a route, called steps, which are chained together with '.' (a dot).
+This is the way to access other defined statements in the program. There are a handful of elements that can be part of a route, called steps, which are chained together with '.' (a dot). 
+
+A route can also start with '.', which means this scope. A route consisting of just a dot, then referes to the current scope as a whole.
 
 | Syntax | Explaination |
 |---|---|
 | _name_ | Lookup the value of a named statement, in the current scope. |
-| _expr_ | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. index -1 referes to the last statement. When starting a route with an expression, it must be postfix with ':'. |
+| _expr_ | Index into a scope. The first element is at 0, and lookup with negative values, starts for the last defined element, i.e. index -1 referes to the last statement. A route cannot directly start with an expression, if this is needed, the expression is prefix with '.'.  |
 | ^ | Goes to the containing scope, or crashes if there is no containing scope. | 
 | @ | Goes to the outermost scope, in the defining file |
+| _ | Shorthand for -1, i.e the last element of a scope |
 
 Here are a few syntax examples, we go in further details in [Routing](#routing).
 ```
 my_name
 ^.other_name
 ^.^.-1.0
-1:.var_name
+.1.var_name
+_.fst
 ```
 
 ### Binary Operation
@@ -114,6 +126,7 @@ fib 10,
 10 |> fib,
 ^.funcs.double 2,
 [\x -> x - 1] 1,
+_ 1 2
 ```
 
 
