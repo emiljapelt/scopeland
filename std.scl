@@ -90,8 +90,8 @@ std: [
         | string -> 0
         | _ -> 1
     ],
-    fst: [\scp -> match scp with _&a -> a],
-    snd: [\scp -> match scp with _&_&a -> a],
+    fst: [\scp -> scp.0],
+    snd: [\scp -> scp.1],
     last: [\scp -> scp.-1],
     not: [\n -> n = 0],
     abs: [\n -> if n < 0 then (0 - n) else n],
