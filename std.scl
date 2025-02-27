@@ -4,35 +4,35 @@ std: [
             | [] -> acc
             | t&h -> ^.-1 t (acc&h)
         ],
-        (.-1) l []
+        _ l []
     ],
     map: [\f l -> 
         [\l acc -> match l with
             | [] -> @.rev acc
             | t&h -> ^.-1 t (acc&(^.f h))
         ],
-        (.-1) l []
+        _ l []
     ],
     mapi: [\f l -> 
         [\l idx acc -> match l with
             | [] -> @.rev acc
             | t&h -> ^.-1 t (idx+1) (acc&(^.f h idx))
         ],
-        (.-1) l 0 []
+        _ l 0 []
     ],
     len: [\s ->
         [\s c -> match s with
             | [] -> c
             | t&_ -> ^.-1 t (c+1)
         ],
-        (.-1) s 0
+        _ s 0
     ],
     filter: [\p s ->
         [\s acc -> match s with
             | [] -> acc
             | t&h -> ^.-1 t (if ^.p h then acc&h else acc)
         ],
-        (.-1) s []
+        _ s []
     ],
     sum: [\s ->
         [\s c -> match s with
@@ -40,14 +40,14 @@ std: [
             | t&int -> ^.-1 t (c+s.-1)
             | t&_ -> ^.-1 t c
         ],
-        (.-1) s 0
+        _ s 0
     ],
     concat: [\s ->
         [\s c -> match s with
             | [] -> c
             | t&h -> ^.-1 t (c+h)
         ],
-        (.-1) s ""
+        _ s ""
     ],
     is_int: [\v -> match v with
         | int -> 1

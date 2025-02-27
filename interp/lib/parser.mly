@@ -81,6 +81,7 @@ route:
   | NAME route_inner { Label $1 :: $2 }
   | UP route_inner { OutOf :: $2 }
   | AT route_inner { FullOut :: $2 }
+  | UNDERSCORE route_inner { Index(Integer(-1)) :: $2 }
 ;
 
 route_inner_no_dot:
@@ -98,6 +99,7 @@ step:
   | simple_expression { Index $1 }
   | UP { OutOf }
   | AT { FullOut }
+  | UNDERSCORE { Index(Integer(-1)) }
 ;
 
 %inline binop:
